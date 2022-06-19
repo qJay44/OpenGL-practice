@@ -24,6 +24,7 @@ class App(mglw.WindowConfig):
         self.set_uniform('time', time)
         self.quad.render(self.prog)
 
+
 if __name__ == '__main__':
     mglw.run_window_config(App)
     
