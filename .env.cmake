@@ -1,0 +1,5 @@
+set(MINGW64 "C:/MinGW/mingw64/bin/")
+set(MY_UTILS_PATH "C:/Users/gerku/Documents/LIDL programs/my-utils")
+set(GLFW "C:/Users/gerku/Documents/LIDL programs/GLFW")
+set(GLAD "C:/Users/gerku/Documents/LIDL programs/glad")
+set(SRC_DIR "src/")
