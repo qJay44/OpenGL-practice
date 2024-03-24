@@ -3,29 +3,15 @@ message(STATUS "Local .env.cmake: ${LOCAL_ENV}")
 
 cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_C_COMPILER ${MINGW64}gcc.exe)
-set(CMAKE_CXX_COMPILER ${MINGW64}g++.exe)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_COMPILER ${MINGW64_PATH}/gcc.exe)
 
 project(MyProject VERSION 1.0)
 
-include_directories(${MY_UTILS_PATH})
+file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.c ${GLAD_PATH}/src/glad.c)
 
-add_executable(${PROJECT_NAME}
-  ${SRC_DIR}main.cpp
-  ${GLAD}/src/glad.c
-)
+add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-  ${GLFW}/include
-  ${GLAD}/include
-)
-
-target_link_directories(${PROJECT_NAME} PUBLIC
-  ${GLFW}/lib-mingw-w64
-)
-
-target_link_libraries(${PROJECT_NAME} glfw3 opengl32)
+target_include_directories(${PROJECT_NAME} PUBLIC ${GLAD_PATH}/include ${GLFW_PATH}/include)
+target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_PATH}/lib-mingw-w64)
+target_link_libraries(${PROJECT_NAME} PUBLIC glfw3)
 
