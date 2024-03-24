@@ -36,11 +36,18 @@ int main() {
   glViewport(0, 0, 1200, 720);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
-  // Triangle vertices
+  // Triangles vertices
   GLfloat vertices[] = {
-    -0.5f, -0.5f, 0.f,
-     0.5f, -0.5f, 0.f,
-     0.0f, 0.5f, 0.f,
+    -0.5f, 0.5f , 0.f,
+    0.5f , 0.5f , 0.f,
+    0.5f , -0.5f, 0.f,
+    -0.5f, -0.5f, 0.f
+  };
+
+  // Triangles indices of vertices
+  GLuint indices[] = {
+    0, 1, 2,
+    0, 2, 3
   };
 
   // A vertex shader reference
@@ -60,30 +67,36 @@ int main() {
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
 
-  // Vertex Array Object and Vertex Buffer 0bject
-  GLuint VAO, VBO;
+  // Vertex Array Object, Vertex Buffer 0bject, Element Buffer Object
+  GLuint VAO, VBO, EBO;
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
+  glGenBuffers(1, &EBO);
 
   glBindVertexArray(VAO);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
   glEnableVertexAttribArray(0);
 
+  // Unbind VAO, VBO, EBO
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
-    glClearColor(0.2f, 0.3f, 0.3f, 1.f);
+    glClearColor(0.07f, 0.13f, 0.17f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(shaderProgram);
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     processInput(window);
 
@@ -91,8 +104,10 @@ int main() {
     glfwPollEvents();
   }
 
+  // Clear all buffer objects
   glDeleteVertexArrays(1, &VAO);
   glDeleteBuffers(1, &VBO);
+  glDeleteBuffers(1, &EBO);
   glDeleteProgram(shaderProgram);
 
   glfwTerminate();
