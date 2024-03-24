@@ -8,9 +8,11 @@ set(CMAKE_C_COMPILER ${MINGW64_PATH}/gcc.exe)
 project(MyProject VERSION 1.0)
 
 file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.c ${GLAD_PATH}/src/glad.c)
+set_source_files_properties(${GLAD_PATH}/src/glad.c PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+target_precompile_headers(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src/pch.h)
 target_include_directories(${PROJECT_NAME} PUBLIC ${GLAD_PATH}/include ${GLFW_PATH}/include)
 target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_PATH}/lib-mingw-w64)
 target_link_libraries(${PROJECT_NAME} PUBLIC glfw3)
