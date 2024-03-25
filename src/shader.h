@@ -1,3 +1,6 @@
+#ifndef SHADER_H
+#define SHADER_H
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -47,3 +50,6 @@ void shaderProgramLink(GLuint program) {
     printf("\n=============================\n\n");
   }
 }
+
+#endif
+
