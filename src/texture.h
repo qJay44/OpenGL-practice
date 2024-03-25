@@ -27,8 +27,8 @@ GLuint textureCreate(const char* path, GLenum texType, GLenum slot, GLenum forma
   return texture;
 }
 
-void textureBind(GLuint texture, GLenum texType) {
-  glBindTexture(texType, texture);
+void textureBind(GLuint self, GLenum texType) {
+  glBindTexture(texType, self);
 }
 
 void textureUnbind(GLenum texType) {
@@ -41,8 +41,8 @@ void textureSetUniform(GLint shaderProgram, const char* name, GLuint unit) {
   glUniform1i(uniTex, unit);
 }
 
-void textureDelete(GLuint* texture, GLsizei num) {
-  glDeleteTextures(num, texture);
+void textureDelete(GLuint* self, GLsizei num) {
+  glDeleteTextures(num, self);
 }
 
 #endif

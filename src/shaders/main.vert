@@ -7,12 +7,10 @@ layout (location = 2) in vec2 tex;
 out vec3 color;
 out vec2 texCoord;
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 proj;
+uniform mat4 camMatrix;
 
 void main() {
-  gl_Position = proj * view * model * vec4(pos, 1.f);
+  gl_Position = camMatrix * vec4(pos, 1.f);
   color = col;
   texCoord = tex;
 }

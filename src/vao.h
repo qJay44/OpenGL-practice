@@ -15,8 +15,8 @@ struct VAO vaoCreate(GLsizei size) {
   return vao;
 }
 
-void vaoBind(const struct VAO* vao) {
-  glBindVertexArray(vao->id);
+void vaoBind(const struct VAO* self) {
+  glBindVertexArray(self->id);
 }
 
 void vaoLinkAttrib(GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset) {
@@ -28,8 +28,8 @@ void vaoUnbind(void) {
   glBindVertexArray(0);
 }
 
-void vaoDelete(const struct VAO* vao) {
-  glDeleteVertexArrays(vao->size, &vao->id);
+void vaoDelete(const struct VAO* self) {
+  glDeleteVertexArrays(self->size, &self->id);
 }
 
 #endif

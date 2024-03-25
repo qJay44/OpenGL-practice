@@ -1,22 +1,18 @@
 #include <stdio.h>
-#include <cglm/cglm.h>
+#include <cglm/types-struct.h>
 
-#include "cglm/affine-pre.h"
-#include "cglm/mat4.h"
+#include "GLFW/glfw3.h"
+#include "inputs.h"
 #include "shader.h"
 #include "vao.h"
 #include "vbo.h"
 #include "ebo.h"
 #include "texture.h"
+#include "camera.h"
 
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
   glViewport(0, 0, width, height);
-}
-
-void processInput(GLFWwindow* window) {
-  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-    glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
 int main() {
@@ -103,46 +99,43 @@ int main() {
   GLuint texture = textureCreate("../../src/textures/brick.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
   textureSetUniform(shaderProgram, "tex0", 0);
 
-  float angle = 0.f;
-
   glEnable(GL_DEPTH_TEST);
+
+  Camera camera = {
+    .position = {0.f, 0.f, 2.f},
+    .orientation = {0.f, 0.f, -1.f},
+    .up = {0.f, 1.f, 0.f},
+    .aspectRatio = 1.f,
+    .speed = 100.f,
+    .sensitivity = 100.f,
+    .firstClick = true
+  };
+
+  double prevTime = glfwGetTime();
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
+    double currTime = glfwGetTime();
+    double dt = currTime - prevTime;
+    prevTime = currTime;
+
     glClearColor(0.07f, 0.13f, 0.17f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    angle += 0.01f;
 
     glUseProgram(shaderProgram);
 
     static int width, height;
     glfwGetWindowSize(window, &width, &height);
+    camera.aspectRatio = (float)width / height;
 
-    mat4 model = GLM_MAT4_IDENTITY_INIT;
-    mat4 view = GLM_MAT4_IDENTITY_INIT;
-    mat4 proj = GLM_MAT4_IDENTITY_INIT;
+    camera.speed *= dt;
+    processInput(window, width, height, &camera);
 
-    vec3 vecTranslate = {0.f, -0.5f, -2.0f};
-    glm_rotate_y(model, glm_rad(angle), model);
-    glm_translate(view, vecTranslate);
-    glm_perspective(glm_rad(45.f), (float)width / height, 0.1f, 100.f, proj);
-
-    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-
-    GLint projLoc = glGetUniformLocation(shaderProgram, "proj");
-    glUniformMatrix4fv(projLoc, 1, GL_FALSE, &proj[0][0]);
-
+    cameraSetMatrixUniform(&camera, 45.f, 0.1f, 100.f, shaderProgram, "camMatrix");
     textureBind(texture, GL_TEXTURE_2D);
 
     glBindVertexArray(vao.id);
-
     glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
-
-    processInput(window);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
