@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-
-#define TRUE 1
-#define FALSE 0
+#include <stdbool.h>
 
 void readFile(const char* path, char* out, int outSize, int printContent) {
   FILE* fptr;

@@ -1,7 +1,10 @@
+#ifndef TEXTURE_H
+#define TEXTURE_H
+
 [[nodiscard]]
 GLuint textureCreate(const char* path, GLenum texType, GLenum slot, GLenum formatIn, GLenum formatOut) {
   int imgWidth, imgHeight, imgColorChannels;
-  stbi_set_flip_vertically_on_load(TRUE);
+  stbi_set_flip_vertically_on_load(true);
   unsigned char* imgBytes = stbi_load(path, &imgWidth, &imgHeight, &imgColorChannels, 0);
 
   GLuint texture;
@@ -41,4 +44,6 @@ void textureSetUniform(GLint shaderProgram, const char* name, GLuint unit) {
 void textureDelete(GLuint* texture, GLsizei num) {
   glDeleteTextures(num, texture);
 }
+
+#endif
 

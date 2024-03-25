@@ -13,7 +13,14 @@ set_source_files_properties(${GLAD_PATH}/src/glad.c PROPERTIES SKIP_PRECOMPILE_H
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_precompile_headers(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/src/pch.h)
-target_include_directories(${PROJECT_NAME} PUBLIC ${GLAD_PATH}/include ${GLFW_PATH}/include ${STB_PATH}/include)
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+  ${GLAD_PATH}/include
+  ${GLFW_PATH}/include
+  ${STB_PATH}/include
+  ${CGLM_PATH}/include
+)
+
 target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_PATH}/lib-mingw-w64)
 target_link_libraries(${PROJECT_NAME} PUBLIC glfw3)
 

@@ -1,7 +1,8 @@
 #include <stdio.h>
-#include <math.h>
-#include <stdint.h>
+#include <cglm/cglm.h>
 
+#include "cglm/affine-pre.h"
+#include "cglm/mat4.h"
 #include "shader.h"
 #include "vao.h"
 #include "vbo.h"
@@ -44,19 +45,24 @@ int main() {
   glViewport(0, 0, 1200, 720);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
-  // Triangles vertices
+  // z+ towards us, z- away from us
   GLfloat vertices[] = {
-    // vertices          // colors           // texture cordinates
-    -0.5f, -0.5f, 0.f,   1.0f, 0.0f, 1.0f,   0.f, 0.f,
-    -0.5f, 0.5f , 0.f,   1.0f, 0.0f, 0.0f,   0.f, 1.f,
-    0.5f , 0.5f , 0.f,   0.8f, 1.0f, 0.0f,   1.f, 1.f,
-    0.5f , -0.5f, 0.f,   0.0f, 0.6f, 1.0f,   1.f, 0.f,
+    // coordinates        // colors              // texture cordinates
+    -0.5f, 0.0f, 0.5f ,   0.83f, 0.70f, 0.44f,   0.0f, 0.f,
+    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,   5.0f, 0.f,
+    0.5f , 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,   0.0f, 0.f,
+    0.5f , 0.0f, 0.5f ,   0.83f, 0.70f, 0.44f,   5.0f, 0.f,
+    0.0f , 0.8f, 0.0f ,   0.92f, 0.86f, 0.76f,   2.5f, 5.f,
   };
 
   // Triangles indices of vertices
   GLuint indices[] = {
-    0, 1, 2,
-    0, 2, 3
+    0, 1, 2, // Bottom 1
+    0, 2, 3, // Bottom 2
+    0, 1, 4, // Left face
+    1, 2, 4, // Rear face
+    2, 3, 4, // Right face
+    3, 0, 4  // Front face
   };
 
   // A vertex shader reference
@@ -94,28 +100,47 @@ int main() {
   eboUnbind();
 
   // Texture
-  GLuint texture = textureCreate("../../src/textures/grass_block.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_RGB);
+  GLuint texture = textureCreate("../../src/textures/brick.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
   textureSetUniform(shaderProgram, "tex0", 0);
 
-  // Scale uniform
-  GLuint uniScale = glGetUniformLocation(shaderProgram, "scale");
-  float scale = 1.f;
+  float angle = 0.f;
+
+  glEnable(GL_DEPTH_TEST);
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
     glClearColor(0.07f, 0.13f, 0.17f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    //scale = sin(glfwGetTime());
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    angle += 0.01f;
 
     glUseProgram(shaderProgram);
-    glUniform1f(uniScale, scale);
+
+    static int width, height;
+    glfwGetWindowSize(window, &width, &height);
+
+    mat4 model = GLM_MAT4_IDENTITY_INIT;
+    mat4 view = GLM_MAT4_IDENTITY_INIT;
+    mat4 proj = GLM_MAT4_IDENTITY_INIT;
+
+    vec3 vecTranslate = {0.f, -0.5f, -2.0f};
+    glm_rotate_y(model, glm_rad(angle), model);
+    glm_translate(view, vecTranslate);
+    glm_perspective(glm_rad(45.f), (float)width / height, 0.1f, 100.f, proj);
+
+    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
+
+    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+
+    GLint projLoc = glGetUniformLocation(shaderProgram, "proj");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, &proj[0][0]);
 
     textureBind(texture, GL_TEXTURE_2D);
 
     glBindVertexArray(vao.id);
 
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 
     processInput(window);
 
