@@ -1,6 +1,8 @@
+#include "shader.h"
 #include "vao.h"
 #include "vbo.h"
 #include "ebo.h"
+#include <math.h>
 
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -40,10 +42,11 @@ int main() {
 
   // Triangles vertices
   GLfloat vertices[] = {
-    -0.5f, 0.5f , 0.f,
-    0.5f , 0.5f , 0.f,
-    0.5f , -0.5f, 0.f,
-    -0.5f, -0.5f, 0.f
+    // x, y, z,          r, g, b
+    -0.5f, 0.5f , 0.f,   0.8f, 0.3f, 0.02f,
+    0.5f , 0.5f , 0.f,   0.8f, 0.3f, 0.02f,
+    0.5f , -0.5f, 0.f,   1.0f, 0.6f, 0.32f,
+    -0.5f, -0.5f, 0.f,   0.9f, 0.5f, 0.17f
   };
 
   // Triangles indices of vertices
@@ -53,18 +56,18 @@ int main() {
   };
 
   // A vertex shader reference
-  GLint vertexShader = loadShader("../../src/shaders/main.vert", GL_VERTEX_SHADER, FALSE);
-  glCompileShader(vertexShader);
+  GLint vertexShader = shaderLoad("../../src/shaders/main.vert", GL_VERTEX_SHADER);
+  shaderCompile(vertexShader);
 
   // A fragment shader reference
-  GLint fragmentShader = loadShader("../../src/shaders/main.frag", GL_FRAGMENT_SHADER, FALSE);
-  glCompileShader(fragmentShader);
+  GLint fragmentShader = shaderLoad("../../src/shaders/main.frag", GL_FRAGMENT_SHADER);
+  shaderCompile(fragmentShader);
 
   // Attach created shader references to a shader program and link it
   GLint shaderProgram = glCreateProgram();
   glAttachShader(shaderProgram, vertexShader);
   glAttachShader(shaderProgram, fragmentShader);
-  glLinkProgram(shaderProgram);
+  shaderProgramLink(shaderProgram);
 
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
@@ -78,18 +81,26 @@ int main() {
   vboBind(&vbo, vertices, sizeof(vertices));
   eboBind(&ebo, indices, sizeof(indices));
 
-  vaoLink(&vao, 0);
+  vaoLinkAttrib(0, 3, GL_FLOAT, 6 * sizeof(GLfloat), (void*)0);
+  vaoLinkAttrib(1, 3, GL_FLOAT, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
 
   vboUnbind();
   vaoUnbind();
   eboUnbind();
+
+  GLuint uniScale = glGetUniformLocation(shaderProgram, "scale");
+  float scale = 1.f;
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
     glClearColor(0.07f, 0.13f, 0.17f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    scale = sin(glfwGetTime());
+
     glUseProgram(shaderProgram);
+    glUniform1f(uniScale, scale);
+
     glBindVertexArray(vao.id);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 

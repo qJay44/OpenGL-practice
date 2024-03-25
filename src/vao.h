@@ -19,8 +19,8 @@ void vaoBind(const struct VAO* vao) {
   glBindVertexArray(vao->id);
 }
 
-void vaoLink(const struct VAO* vao, GLuint layout) {
-  glVertexAttribPointer(layout, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+void vaoLinkAttrib(GLuint layout, GLuint numComponents, GLenum type, GLsizeiptr stride, void* offset) {
+  glVertexAttribPointer(layout, numComponents, type, GL_FALSE, stride, offset);
   glEnableVertexAttribArray(layout);
 }
 
