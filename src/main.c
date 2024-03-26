@@ -39,55 +39,7 @@ int main() {
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
   GLuint brickTexture = textureCreate("../../src/textures/brick.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
-
-  //================= Pyramid =================//
-
-  // z+ towards us, z- away from us
-  GLfloat pyramidVertices[] = {
-    // coordinates        // colors              // texture cordinates
-    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,   0.0f, 0.f,
-    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,   5.0f, 0.f,
-     0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,   0.0f, 0.f,
-     0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,   5.0f, 0.f,
-     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,   2.5f, 5.f,
-  };
-
-  // Triangles indices of vertices
-  GLuint pyramidIndices[] = {
-    0, 1, 2, // Bottom 1
-    0, 2, 3, // Bottom 2
-    0, 1, 4, // Left face
-    1, 2, 4, // Rear face
-    2, 3, 4, // Right face
-    3, 0, 4  // Front face
-  };
-
-  Object pyramid = {
-    .vertPtr = pyramidVertices,
-    .vertSize = sizeof(pyramidVertices),
-    .vertCount = sizeof(pyramidVertices)/sizeof(pyramidVertices[0]),
-    .indPtr = pyramidIndices,
-    .indSize = sizeof(pyramidIndices),
-    .indCount = sizeof(pyramidIndices)/sizeof(pyramidIndices[0]),
-    .mat = GLMS_MAT4_IDENTITY_INIT
-  };
-
-  objectLoadShaders(&pyramid, "../../src/shaders/main.vert", "../../src/shaders/main.frag");
-  objectBind(&pyramid);
-
-  objectLinkAttrib(&pyramid, 0, 3, 8, 0);
-  objectLinkAttrib(&pyramid, 1, 3, 8, 3);
-  objectLinkAttrib(&pyramid, 2, 2, 8, 6);
-
-  objectUnbind();
-  textureSetUniform(pyramid.shaderProgram, "tex0", 0);
-
-  {
-    vec3s pyramidPos = {0.f, 0.f, 0.f};
-    objectTranslate(&pyramid, pyramidPos);
-    objectSetMatrixUniform(&pyramid, "matModel");
-  }
-  //=============================================//
+  vec4s lightColor = {1.f, 1.f, 1.f, 1.f};
 
   //========== Illumination cube ==========//
 
@@ -134,13 +86,82 @@ int main() {
   objectLinkAttrib(&light, 0, 3, 3, 0);
   objectUnbind();
 
-  {
-    vec3s lightPos = {0.5f, 0.5f, 0.5f};
-    objectTranslate(&light, lightPos);
-    objectSetMatrixUniform(&light, "matModel");
-  }
+  vec3s lightPos = {0.5f, 0.5f, 0.5f};
+  objectTranslate(&light, lightPos);
+
+  objectSetMatrixUniform(&light, "matModel");
+  objectSetVec4Unifrom(&light, "lightColor", lightColor);
 
   //=======================================//
+
+  //================= Pyramid =================//
+
+  // z+ towards us, z- away from us
+  GLfloat pyramidVertices[] = {
+    // coordinates        // colors              // texture    // normals
+    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,   0.0f, -1.0f, 0.0f, // Bottom side
+    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 0.0f, 5.0f,   0.0f, -1.0f, 0.0f, // Bottom side
+     0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 5.0f,   0.0f, -1.0f, 0.0f, // Bottom side
+     0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.0f, -1.0f, 0.0f, // Bottom side
+
+    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,   0.8f, 0.5f,  0.0f, // Left Side
+    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.8f, 0.5f,  0.0f, // Left Side
+     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,   0.8f, 0.5f,  0.0f, // Left Side
+
+    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.0f, 0.5f, -0.8f, // Non-facing side
+     0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,   0.0f, 0.5f, -0.8f, // Non-facing side
+     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,   0.0f, 0.5f, -0.8f, // Non-facing side
+
+     0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,   0.8f, 0.5f,  0.0f, // Right side
+     0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.8f, 0.5f,  0.0f, // Right side
+     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,   0.8f, 0.5f,  0.0f, // Right side
+
+     0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.0f, 0.5f,  0.8f, // Facing side
+    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,   0.0f, 0.5f,  0.8f, // Facing side
+     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,   0.0f, 0.5f,  0.8f  // Facing side
+  };
+
+  // Triangles indices of vertices
+  GLuint pyramidIndices[] = {
+    0, 1, 2, // Bottom side
+    0, 2, 3, // Bottom side
+    4, 6, 5, // Left side
+    7, 9, 8, // Non-facing side
+    10, 12, 11, // Right side
+    13, 15, 14 // Facing side
+  };
+
+  Object pyramid = {
+    .vertPtr = pyramidVertices,
+    .vertSize = sizeof(pyramidVertices),
+    .vertCount = sizeof(pyramidVertices)/sizeof(pyramidVertices[0]),
+    .indPtr = pyramidIndices,
+    .indSize = sizeof(pyramidIndices),
+    .indCount = sizeof(pyramidIndices)/sizeof(pyramidIndices[0]),
+    .mat = GLMS_MAT4_IDENTITY_INIT
+  };
+
+  objectLoadShaders(&pyramid, "../../src/shaders/main.vert", "../../src/shaders/main.frag");
+  objectBind(&pyramid);
+
+  objectLinkAttrib(&pyramid, 0, 3, 11, 0);
+  objectLinkAttrib(&pyramid, 1, 3, 11, 3);
+  objectLinkAttrib(&pyramid, 2, 2, 11, 6);
+  objectLinkAttrib(&pyramid, 3, 3, 11, 8);
+
+  objectUnbind();
+  textureSetUniform(pyramid.shaderProgram, "tex0", 0);
+
+  {
+    vec3s pyramidPos = {0.f, 0.f, 0.f};
+    objectTranslate(&pyramid, pyramidPos);
+  }
+
+  objectSetMatrixUniform(&pyramid, "matModel");
+  objectSetVec4Unifrom(&pyramid, "lightColor", lightColor);
+  objectSetVec3Unifrom(&pyramid, "lightPos", lightPos);
+
+  //=============================================//
 
   glEnable(GL_DEPTH_TEST);
 

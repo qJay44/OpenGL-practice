@@ -77,6 +77,18 @@ void objectSetMatrixUniform(Object* self, const char* name) {
   glUniformMatrix4fv(loc, 1, GL_FALSE, (const GLfloat*)&self->mat.raw);
 }
 
+void objectSetVec3Unifrom(Object* self, const char* name, vec3s v) {
+  glUseProgram(self->shaderProgram);
+  GLint loc = glGetUniformLocation(self->shaderProgram, name);
+  glUniform3f(loc, v.x, v.y, v.z);
+}
+
+void objectSetVec4Unifrom(Object* self, const char* name, vec4s v) {
+  glUseProgram(self->shaderProgram);
+  GLint loc = glGetUniformLocation(self->shaderProgram, name);
+  glUniform4f(loc, v.x, v.y, v.z, v.w);
+}
+
 void objectDraw(Object* self) {
   glBindVertexArray(self->vao.id);
   glDrawElements(GL_TRIANGLES, self->indCount, GL_UNSIGNED_INT, 0);
