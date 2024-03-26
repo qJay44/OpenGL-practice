@@ -7,21 +7,28 @@ typedef struct {
   vec3s position, orientation, up;
   float aspectRatio, speed, sensitivity;
   bool firstClick;
+  mat4s mat;
 } Camera;
 
-void cameraSetMatrixUniform(Camera* self, float fov, float nearPlane, float farPlane, GLint shaderProgram, const char* name) {
+void cameraUpdate(Camera* self, float fov, float nearPlane, float farPlane, float aspectRatio, float dt) {
   mat4s view = GLMS_MAT4_IDENTITY_INIT;
   mat4s proj = GLMS_MAT4_IDENTITY_INIT;
-  mat4s projected;
+
+  self->aspectRatio = aspectRatio;
+  self->speed *= dt;
 
   vec3s lookPos = glms_vec3_add(self->position, self->orientation);
 
   view = glms_lookat(self->position, lookPos, self->up);
   proj = glms_perspective(glm_rad(fov), self->aspectRatio, nearPlane, farPlane);
 
-  projected = glms_mat4_mul(proj, view);
+  self->mat = glms_mat4_mul(proj, view);
+}
+
+void cameraSetMatrixUniform(Camera* self, GLint shaderProgram, const char* name) {
+  glUseProgram(shaderProgram);
   GLint loc = glGetUniformLocation(shaderProgram, name);
-  glUniformMatrix4fv(loc, 1, GL_FALSE, (const GLfloat*)&projected.raw);
+  glUniformMatrix4fv(loc, 1, GL_FALSE, (const GLfloat*)&self->mat.raw);
 }
 
 void cameraMoveForward(Camera* self) {

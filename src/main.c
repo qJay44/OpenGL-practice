@@ -3,12 +3,9 @@
 
 #include "GLFW/glfw3.h"
 #include "inputs.h"
-#include "shader.h"
-#include "vao.h"
-#include "vbo.h"
-#include "ebo.h"
-#include "texture.h"
+#include "object.h"
 #include "camera.h"
+#include "texture.h"
 
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -41,18 +38,22 @@ int main() {
   glViewport(0, 0, 1200, 720);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
+  GLuint brickTexture = textureCreate("../../src/textures/brick.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
+
+  //================= Pyramid =================//
+
   // z+ towards us, z- away from us
-  GLfloat vertices[] = {
+  GLfloat pyramidVertices[] = {
     // coordinates        // colors              // texture cordinates
-    -0.5f, 0.0f, 0.5f ,   0.83f, 0.70f, 0.44f,   0.0f, 0.f,
+    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,   0.0f, 0.f,
     -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,   5.0f, 0.f,
-    0.5f , 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,   0.0f, 0.f,
-    0.5f , 0.0f, 0.5f ,   0.83f, 0.70f, 0.44f,   5.0f, 0.f,
-    0.0f , 0.8f, 0.0f ,   0.92f, 0.86f, 0.76f,   2.5f, 5.f,
+     0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,   0.0f, 0.f,
+     0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,   5.0f, 0.f,
+     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,   2.5f, 5.f,
   };
 
   // Triangles indices of vertices
-  GLuint indices[] = {
+  GLuint pyramidIndices[] = {
     0, 1, 2, // Bottom 1
     0, 2, 3, // Bottom 2
     0, 1, 4, // Left face
@@ -61,43 +62,85 @@ int main() {
     3, 0, 4  // Front face
   };
 
-  // A vertex shader reference
-  GLint vertexShader = shaderLoad("../../src/shaders/main.vert", GL_VERTEX_SHADER);
-  shaderCompile(vertexShader);
+  Object pyramid = {
+    .vertPtr = pyramidVertices,
+    .vertSize = sizeof(pyramidVertices),
+    .vertCount = sizeof(pyramidVertices)/sizeof(pyramidVertices[0]),
+    .indPtr = pyramidIndices,
+    .indSize = sizeof(pyramidIndices),
+    .indCount = sizeof(pyramidIndices)/sizeof(pyramidIndices[0]),
+    .mat = GLMS_MAT4_IDENTITY_INIT
+  };
 
-  // A fragment shader reference
-  GLint fragmentShader = shaderLoad("../../src/shaders/main.frag", GL_FRAGMENT_SHADER);
-  shaderCompile(fragmentShader);
+  objectLoadShaders(&pyramid, "../../src/shaders/main.vert", "../../src/shaders/main.frag");
+  objectBind(&pyramid);
 
-  // Attach created shader references to a shader program and link it
-  GLint shaderProgram = glCreateProgram();
-  glAttachShader(shaderProgram, vertexShader);
-  glAttachShader(shaderProgram, fragmentShader);
-  shaderProgramLink(shaderProgram);
+  objectLinkAttrib(&pyramid, 0, 3, 8, 0);
+  objectLinkAttrib(&pyramid, 1, 3, 8, 3);
+  objectLinkAttrib(&pyramid, 2, 2, 8, 6);
 
-  glDeleteShader(vertexShader);
-  glDeleteShader(fragmentShader);
+  objectUnbind();
+  textureSetUniform(pyramid.shaderProgram, "tex0", 0);
 
-  // Buffer objects
-  struct VAO vao = vaoCreate(1);
-  struct VBO vbo = vboCreate(1);
-  struct EBO ebo = eboCreate(1);
+  {
+    vec3s pyramidPos = {0.f, 0.f, 0.f};
+    objectTranslate(&pyramid, pyramidPos);
+    objectSetMatrixUniform(&pyramid, "matModel");
+  }
+  //=============================================//
 
-  vaoBind(&vao);
-  vboBind(&vbo, vertices, sizeof(vertices));
-  eboBind(&ebo, indices, sizeof(indices));
+  //========== Illumination cube ==========//
 
-  vaoLinkAttrib(0, 3, GL_FLOAT, 8 * sizeof(GLfloat), (void*)0);
-  vaoLinkAttrib(1, 3, GL_FLOAT, 8 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-  vaoLinkAttrib(2, 2, GL_FLOAT, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
+  // z+ towards us, z- away from us
+  GLfloat lightVertices[] = {
+    -0.1f, -0.1f,  0.1f,
+    -0.1f, -0.1f, -0.1f,
+     0.1f, -0.1f, -0.1f,
+     0.1f, -0.1f,  0.1f,
+    -0.1f,  0.1f,  0.1f,
+    -0.1f,  0.1f, -0.1f,
+     0.1f,  0.1f, -0.1f,
+     0.1f,  0.1f,  0.1f
+  };
 
-  vboUnbind();
-  vaoUnbind();
-  eboUnbind();
+  // Triangles indices of vertices
+  GLuint lightIndices[] = {
+    0, 1, 2,
+    0, 2, 3,
+    0, 4, 7,
+    0, 7, 3,
+    3, 7, 6,
+    3, 6, 2,
+    2, 6, 5,
+    2, 5, 1,
+    1, 5, 4,
+    1, 4, 0,
+    4, 5, 6,
+    4, 6, 7
+  };
 
-  // Texture
-  GLuint texture = textureCreate("../../src/textures/brick.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
-  textureSetUniform(shaderProgram, "tex0", 0);
+  Object light = {
+    .vertPtr = lightVertices,
+    .vertSize = sizeof(lightVertices),
+    .vertCount = sizeof(lightVertices)/sizeof(lightVertices[0]),
+    .indPtr = lightIndices,
+    .indSize = sizeof(lightIndices),
+    .indCount = sizeof(lightIndices)/sizeof(lightIndices[0]),
+    .mat = GLMS_MAT4_IDENTITY_INIT
+  };
+
+  objectLoadShaders(&light, "../../src/shaders/light.vert", "../../src/shaders/light.frag");
+  objectBind(&light);
+  objectLinkAttrib(&light, 0, 3, 3, 0);
+  objectUnbind();
+
+  {
+    vec3s lightPos = {0.5f, 0.5f, 0.5f};
+    objectTranslate(&light, lightPos);
+    objectSetMatrixUniform(&light, "matModel");
+  }
+
+  //=======================================//
 
   glEnable(GL_DEPTH_TEST);
 
@@ -115,6 +158,9 @@ int main() {
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
+    static int width, height;
+    glfwGetWindowSize(window, &width, &height);
+
     double currTime = glfwGetTime();
     double dt = currTime - prevTime;
     prevTime = currTime;
@@ -122,32 +168,25 @@ int main() {
     glClearColor(0.07f, 0.13f, 0.17f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(shaderProgram);
-
-    static int width, height;
-    glfwGetWindowSize(window, &width, &height);
-    camera.aspectRatio = (float)width / height;
-
-    camera.speed *= dt;
     processInput(window, width, height, &camera);
 
-    cameraSetMatrixUniform(&camera, 45.f, 0.1f, 100.f, shaderProgram, "camMatrix");
-    textureBind(texture, GL_TEXTURE_2D);
+    cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
 
-    glBindVertexArray(vao.id);
-    glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+    // Working with pyramid shader
+    cameraSetMatrixUniform(&camera, pyramid.shaderProgram, "matCam");
+    textureBind(brickTexture, GL_TEXTURE_2D);
+    objectDraw(&pyramid);
+
+    // Working with light shader
+    cameraSetMatrixUniform(&camera, light.shaderProgram, "matCam");
+    objectDraw(&light);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
-  // Clear all buffer objects
-  vaoDelete(&vao);
-  vboDelete(&vbo);
-  eboDelete(&ebo);
-
-  textureDelete(&texture, 1);
-  glDeleteProgram(shaderProgram);
+  objectDelete(&pyramid);
+  textureDelete(&brickTexture, 1);
 
   glfwTerminate();
   return 0;
