@@ -11,8 +11,8 @@ GLint shaderLoad(const char* path, int type) {
     exit(1);
   }
 
-  char shaderStr[1024];
-  readFile(path, shaderStr, 1024, false);
+  char shaderStr[4096];
+  readFile(path, shaderStr, 4096, false);
 
   const char* ptrShaderStr = shaderStr;
   GLuint shader = glCreateShader(type);

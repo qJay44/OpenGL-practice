@@ -153,7 +153,6 @@ int main() {
   objectSetMatrixUniform(&main, "matModel");
   objectSetVec4Unifrom(&main, "lightColor", lightColor);
   objectSetVec3Unifrom(&main, "lightPos", lightPos);
-  objectSetVec3Unifrom(&main, "camPos", camera.position);
 
   //=============================================//
 
@@ -181,6 +180,7 @@ int main() {
 
     cameraMove(&camera, mouseX, mouseY, width, height);
     cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
+    objectSetVec3Unifrom(&main, "camPos", camera.position);
 
     // Working with pyramid shader
     cameraSetMatrixUniform(&camera, main.shaderProgram, "matCam");

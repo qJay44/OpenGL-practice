@@ -63,11 +63,11 @@ void cameraMoveDown(Camera* self) {
 }
 
 void cameraSetIncreasedSpeed(Camera* self) {
-  self->speed = 1.2f;
+  self->speed = 2.6f;
 }
 
 void cameraSetNormalSpeed(Camera* self) {
-  self->speed = 0.8f;
+  self->speed = 1.8f;
 }
 
 void cameraMove(Camera* self, double x, double y, int w, int h) {
