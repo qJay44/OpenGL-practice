@@ -6,7 +6,6 @@
 typedef struct {
   vec3s position, orientation, up;
   float aspectRatio, speed, sensitivity;
-  bool firstClick;
   mat4s mat;
 } Camera;
 
@@ -64,14 +63,14 @@ void cameraMoveDown(Camera* self) {
 }
 
 void cameraSetIncreasedSpeed(Camera* self) {
-  self->speed = 0.8f;
+  self->speed = 1.2f;
 }
 
 void cameraSetNormalSpeed(Camera* self) {
-  self->speed = 0.4f;
+  self->speed = 0.8f;
 }
 
-void cameraHandlePressLMB(Camera* self, double x, double y, int w, int h) {
+void cameraMove(Camera* self, double x, double y, int w, int h) {
   // Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the screen
   // and then "transforms" them into degrees
   float rotX = self->sensitivity * (y - h * 0.5f) / h;

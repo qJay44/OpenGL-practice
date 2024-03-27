@@ -10,6 +10,7 @@
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
   glViewport(0, 0, width, height);
+  glfwSetCursorPos(window, width * 0.5f, height * 0.5f);
 }
 
 int main() {
@@ -27,6 +28,8 @@ int main() {
     return -1;
   }
   glfwMakeContextCurrent(window);
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+  glfwSetCursorPos(window, 1200 * 0.5f, 720 * 0.5f);
 
   // GLAD init
   int version = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -40,6 +43,15 @@ int main() {
 
   GLuint brickTexture = textureCreate("../../src/textures/brick.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
   vec4s lightColor = {1.f, 1.f, 1.f, 1.f};
+
+  Camera camera = {
+    .position = {-1.f, 1.f, 2.f},
+    .orientation = {0.5f, -0.3f, -1.f},
+    .up = {0.f, 1.f, 0.f},
+    .aspectRatio = 1.f,
+    .speed = 100.f,
+    .sensitivity = 100.f,
+  };
 
   //========== Illumination cube ==========//
 
@@ -104,9 +116,9 @@ int main() {
      0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 5.0f,   0.0f, -1.0f, 0.0f, // Bottom side
      0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.0f, -1.0f, 0.0f, // Bottom side
 
-    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,   0.8f, 0.5f,  0.0f, // Left Side
-    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.8f, 0.5f,  0.0f, // Left Side
-     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,   0.8f, 0.5f,  0.0f, // Left Side
+    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,  -0.8f, 0.5f,  0.0f, // Left Side
+    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,  -0.8f, 0.5f,  0.0f, // Left Side
+     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,  -0.8f, 0.5f,  0.0f, // Left Side
 
     -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.0f, 0.5f, -0.8f, // Non-facing side
      0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,   0.0f, 0.5f, -0.8f, // Non-facing side
@@ -160,27 +172,22 @@ int main() {
   objectSetMatrixUniform(&pyramid, "matModel");
   objectSetVec4Unifrom(&pyramid, "lightColor", lightColor);
   objectSetVec3Unifrom(&pyramid, "lightPos", lightPos);
+  objectSetVec3Unifrom(&pyramid, "camPos", camera.position);
 
   //=============================================//
 
   glEnable(GL_DEPTH_TEST);
-
-  Camera camera = {
-    .position = {0.f, 0.f, 2.f},
-    .orientation = {0.f, 0.f, -1.f},
-    .up = {0.f, 1.f, 0.f},
-    .aspectRatio = 1.f,
-    .speed = 100.f,
-    .sensitivity = 100.f,
-    .firstClick = true
-  };
 
   double prevTime = glfwGetTime();
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
     static int width, height;
+    static double mouseX, mouseY;
+
     glfwGetWindowSize(window, &width, &height);
+    glfwGetCursorPos(window, &mouseX, &mouseY);
+    glfwSetCursorPos(window, width * 0.5f, height * 0.5f);
 
     double currTime = glfwGetTime();
     double dt = currTime - prevTime;
@@ -192,6 +199,7 @@ int main() {
     processInput(window, width, height, &camera);
 
     cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
+    cameraMove(&camera, mouseX, mouseY, width, height);
 
     // Working with pyramid shader
     cameraSetMatrixUniform(&camera, pyramid.shaderProgram, "matCam");
@@ -207,6 +215,7 @@ int main() {
   }
 
   objectDelete(&pyramid);
+  objectDelete(&light);
   textureDelete(&brickTexture, 1);
 
   glfwTerminate();
