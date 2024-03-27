@@ -1,16 +1,21 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
+typedef struct {
+  GLuint id;
+  GLuint slot;
+} Texture;
+
 [[nodiscard]]
-GLuint textureCreate(const char* path, GLenum texType, GLenum slot, GLenum formatIn, GLenum formatOut) {
+Texture textureCreate(const char* path, GLenum texType, GLenum slot, GLenum formatIn, GLenum formatOut) {
   int imgWidth, imgHeight, imgColorChannels;
   stbi_set_flip_vertically_on_load(true);
   unsigned char* imgBytes = stbi_load(path, &imgWidth, &imgHeight, &imgColorChannels, 0);
 
-  GLuint texture;
-  glGenTextures(1, &texture);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(texType, texture);
+  GLuint textureId;
+  glGenTextures(1, &textureId);
+  glActiveTexture(slot);
+  glBindTexture(texType, textureId);
 
   glTexParameteri(texType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(texType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -24,11 +29,17 @@ GLuint textureCreate(const char* path, GLenum texType, GLenum slot, GLenum forma
   stbi_image_free(imgBytes);
   glBindTexture(texType, 0); // Unbind
 
-  return texture;
+  Texture tex = {
+    .id = textureId,
+    .slot = slot
+  };
+
+  return tex;
 }
 
-void textureBind(GLuint self, GLenum texType) {
-  glBindTexture(texType, self);
+void textureBind(Texture* self, GLenum texType) {
+  glActiveTexture(self->slot);
+  glBindTexture(texType, self->id);
 }
 
 void textureUnbind(GLenum texType) {
@@ -41,8 +52,8 @@ void textureSetUniform(GLint shaderProgram, const char* name, GLuint unit) {
   glUniform1i(uniTex, unit);
 }
 
-void textureDelete(GLuint* self, GLsizei num) {
-  glDeleteTextures(num, self);
+void textureDelete(Texture* self, GLsizei num) {
+  glDeleteTextures(num, &self->id);
 }
 
 #endif

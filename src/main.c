@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <cglm/types-struct.h>
 
 #include "GLFW/glfw3.h"
 #include "inputs.h"
@@ -41,7 +40,8 @@ int main() {
   glViewport(0, 0, 1200, 720);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
-  GLuint brickTexture = textureCreate("../../src/textures/brick.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
+  Texture planksTex = textureCreate("../../src/textures/planks.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
+  Texture planksSpecTex = textureCreate("../../src/textures/planksSpec.png", GL_TEXTURE_2D, GL_TEXTURE1, GL_RED, GL_RGBA);
   vec4s lightColor = {1.f, 1.f, 1.f, 1.f};
 
   Camera camera = {
@@ -109,70 +109,51 @@ int main() {
   //================= Pyramid =================//
 
   // z+ towards us, z- away from us
-  GLfloat pyramidVertices[] = {
-    // coordinates        // colors              // texture    // normals
-    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,   0.0f, -1.0f, 0.0f, // Bottom side
-    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 0.0f, 5.0f,   0.0f, -1.0f, 0.0f, // Bottom side
-     0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 5.0f,   0.0f, -1.0f, 0.0f, // Bottom side
-     0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.0f, -1.0f, 0.0f, // Bottom side
-
-    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,  -0.8f, 0.5f,  0.0f, // Left Side
-    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,  -0.8f, 0.5f,  0.0f, // Left Side
-     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,  -0.8f, 0.5f,  0.0f, // Left Side
-
-    -0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.0f, 0.5f, -0.8f, // Non-facing side
-     0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,   0.0f, 0.5f, -0.8f, // Non-facing side
-     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,   0.0f, 0.5f, -0.8f, // Non-facing side
-
-     0.5f, 0.0f, -0.5f,   0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,   0.8f, 0.5f,  0.0f, // Right side
-     0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.8f, 0.5f,  0.0f, // Right side
-     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,   0.8f, 0.5f,  0.0f, // Right side
-
-     0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,   0.0f, 0.5f,  0.8f, // Facing side
-    -0.5f, 0.0f,  0.5f,   0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,   0.0f, 0.5f,  0.8f, // Facing side
-     0.0f, 0.8f,  0.0f,   0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,   0.0f, 0.5f,  0.8f  // Facing side
+  GLfloat mainVertices[] = {
+    // coordinates       // colors          // texture    // normals
+    -1.f, 0.f,  1.f,     0.f, 0.f, 0.f,     0.f, 0.f,     0.f, 1.f, 0.f,
+    -1.f, 0.f, -1.f,     0.f, 0.f, 0.f,     0.f, 1.f,     0.f, 1.f, 0.f,
+     1.f, 0.f, -1.f,     0.f, 0.f, 0.f,     1.f, 1.f,     0.f, 1.f, 0.f,
+     1.f, 0.f,  1.f,     0.f, 0.f, 0.f,     1.f, 0.f,     0.f, 1.f, 0.f,
   };
 
   // Triangles indices of vertices
-  GLuint pyramidIndices[] = {
-    0, 1, 2, // Bottom side
-    0, 2, 3, // Bottom side
-    4, 6, 5, // Left side
-    7, 9, 8, // Non-facing side
-    10, 12, 11, // Right side
-    13, 15, 14 // Facing side
+  GLuint mainIndices[] = {
+    0, 1, 2,
+    0, 2, 3
   };
 
-  Object pyramid = {
-    .vertPtr = pyramidVertices,
-    .vertSize = sizeof(pyramidVertices),
-    .vertCount = sizeof(pyramidVertices)/sizeof(pyramidVertices[0]),
-    .indPtr = pyramidIndices,
-    .indSize = sizeof(pyramidIndices),
-    .indCount = sizeof(pyramidIndices)/sizeof(pyramidIndices[0]),
+  Object main = {
+    .vertPtr = mainVertices,
+    .vertSize = sizeof(mainVertices),
+    .vertCount = sizeof(mainVertices)/sizeof(mainVertices[0]),
+    .indPtr = mainIndices,
+    .indSize = sizeof(mainIndices),
+    .indCount = sizeof(mainIndices)/sizeof(mainIndices[0]),
     .mat = GLMS_MAT4_IDENTITY_INIT
   };
 
-  objectLoadShaders(&pyramid, "../../src/shaders/main.vert", "../../src/shaders/main.frag");
-  objectBind(&pyramid);
+  objectLoadShaders(&main, "../../src/shaders/main.vert", "../../src/shaders/main.frag");
+  objectBind(&main);
 
-  objectLinkAttrib(&pyramid, 0, 3, 11, 0);
-  objectLinkAttrib(&pyramid, 1, 3, 11, 3);
-  objectLinkAttrib(&pyramid, 2, 2, 11, 6);
-  objectLinkAttrib(&pyramid, 3, 3, 11, 8);
+  objectLinkAttrib(&main, 0, 3, 11, 0);
+  objectLinkAttrib(&main, 1, 3, 11, 3);
+  objectLinkAttrib(&main, 2, 2, 11, 6);
+  objectLinkAttrib(&main, 3, 3, 11, 8);
 
   objectUnbind();
-  textureSetUniform(pyramid.shaderProgram, "tex0", 0);
+  textureSetUniform(main.shaderProgram, "tex0", 0);
+  textureSetUniform(main.shaderProgram, "tex1", 1);
 
   {
     vec3s pyramidPos = {0.f, 0.f, 0.f};
-    objectTranslate(&pyramid, pyramidPos);
+    objectTranslate(&main, pyramidPos);
   }
 
-  objectSetMatrixUniform(&pyramid, "matModel");
-  objectSetVec4Unifrom(&pyramid, "lightColor", lightColor);
-  objectSetVec3Unifrom(&pyramid, "lightPos", lightPos);
-  objectSetVec3Unifrom(&pyramid, "camPos", camera.position);
+  objectSetMatrixUniform(&main, "matModel");
+  objectSetVec4Unifrom(&main, "lightColor", lightColor);
+  objectSetVec3Unifrom(&main, "lightPos", lightPos);
+  objectSetVec3Unifrom(&main, "camPos", camera.position);
 
   //=============================================//
 
@@ -198,13 +179,14 @@ int main() {
 
     processInput(window, width, height, &camera);
 
-    cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
     cameraMove(&camera, mouseX, mouseY, width, height);
+    cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
 
     // Working with pyramid shader
-    cameraSetMatrixUniform(&camera, pyramid.shaderProgram, "matCam");
-    textureBind(brickTexture, GL_TEXTURE_2D);
-    objectDraw(&pyramid);
+    cameraSetMatrixUniform(&camera, main.shaderProgram, "matCam");
+    textureBind(&planksTex, GL_TEXTURE_2D);
+    textureBind(&planksSpecTex, GL_TEXTURE_2D);
+    objectDraw(&main);
 
     // Working with light shader
     cameraSetMatrixUniform(&camera, light.shaderProgram, "matCam");
@@ -214,9 +196,9 @@ int main() {
     glfwPollEvents();
   }
 
-  objectDelete(&pyramid);
+  objectDelete(&main);
   objectDelete(&light);
-  textureDelete(&brickTexture, 1);
+  textureDelete(&planksTex, 1);
 
   glfwTerminate();
   return 0;
