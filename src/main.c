@@ -90,7 +90,10 @@ int main() {
     .indPtr = lightIndices,
     .indSize = sizeof(lightIndices),
     .indCount = sizeof(lightIndices)/sizeof(lightIndices[0]),
-    .mat = GLMS_MAT4_IDENTITY_INIT
+    .mat = GLMS_MAT4_IDENTITY_INIT,
+    .vao = vaoCreate(1),
+    .vbo = vboCreate(1),
+    .ebo = eboCreate(1)
   };
 
   objectLoadShaders(&light, "../../src/shaders/light.vert", "../../src/shaders/light.frag");
@@ -130,7 +133,10 @@ int main() {
     .indPtr = mainIndices,
     .indSize = sizeof(mainIndices),
     .indCount = sizeof(mainIndices)/sizeof(mainIndices[0]),
-    .mat = GLMS_MAT4_IDENTITY_INIT
+    .mat = GLMS_MAT4_IDENTITY_INIT,
+    .vao = vaoCreate(1),
+    .vbo = vboCreate(1),
+    .ebo = eboCreate(1)
   };
 
   objectLoadShaders(&main, "../../src/shaders/main.vert", "../../src/shaders/main.frag");

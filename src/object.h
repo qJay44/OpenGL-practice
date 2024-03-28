@@ -43,17 +43,9 @@ void objectLoadShaders(Object* self, const char* vsPath, const char* fsPath) {
 }
 
 void objectBind(Object* self) {
-  struct VAO vao = vaoCreate(1);
-  struct VBO vbo = vboCreate(1);
-  struct EBO ebo = eboCreate(1);
-
-  vaoBind(&vao);
-  vboBind(&vbo, self->vertPtr, self->vertSize);
-  eboBind(&ebo, self->indPtr, self->indSize);
-
-  self->vao = vao;
-  self->vbo = vbo;
-  self->ebo = ebo;
+  vaoBind(&self->vao);
+  vboBind(&self->vbo, self->vertPtr, self->vertSize);
+  eboBind(&self->ebo, self->indPtr, self->indSize);
 }
 
 void objectUnbind() {

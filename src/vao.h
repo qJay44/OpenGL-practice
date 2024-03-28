@@ -7,6 +7,7 @@ struct VAO {
   GLsizei size;
 };
 
+[[nodiscard]]
 struct VAO vaoCreate(GLsizei size) {
   struct VAO vao;
   glGenVertexArrays(size, &vao.id);
