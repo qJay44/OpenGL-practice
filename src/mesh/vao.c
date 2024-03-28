@@ -1,13 +1,5 @@
-#ifndef VAO_H
-#define VAO_H
+#include "vao.h"
 
-// Vertex Array Object
-struct VAO {
-  GLuint id;
-  GLsizei size;
-};
-
-[[nodiscard]]
 struct VAO vaoCreate(GLsizei size) {
   struct VAO vao;
   glGenVertexArrays(size, &vao.id);
@@ -32,6 +24,4 @@ void vaoUnbind(void) {
 void vaoDelete(const struct VAO* self) {
   glDeleteVertexArrays(self->size, &self->id);
 }
-
-#endif
 

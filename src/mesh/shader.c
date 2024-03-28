@@ -1,10 +1,8 @@
-#ifndef SHADER_H
-#define SHADER_H
-
 #include <stdio.h>
 #include <stdlib.h>
 
-[[nodiscard]]
+#include "shader.h"
+
 GLint shaderLoad(const char* path, int type) {
   if (type != GL_VERTEX_SHADER && type != GL_FRAGMENT_SHADER) {
     printf("Shader load error: specified type is wrong\n");
@@ -50,6 +48,4 @@ void shaderProgramLink(GLuint program) {
     printf("\n=============================\n\n");
   }
 }
-
-#endif
 

@@ -1,26 +1,27 @@
-#ifndef OBJECT_H
-#define OBJECT_H
-
+#include "object.h"
+#include "cglm/struct/affine-pre.h"
+#include "cglm/struct/mat4.h"
 #include "shader.h"
-#include "vao.h"
-#include "vbo.h"
-#include "ebo.h"
-#include "cglm/struct.h"
 
-typedef struct {
-  float* vertPtr;
-  int vertSize;
-  int vertCount;
-  GLuint* indPtr;
-  int indSize;
-  int indCount;
+Object objectCreate(const float* vertices, int vertSize, const GLuint* indices, int indSize) {
+  static const unsigned char floatSize = sizeof(float);
+  static const unsigned char GLuintSize = sizeof(GLuint);
 
-  GLint shaderProgram;
-  struct VAO vao;
-  struct VBO vbo;
-  struct EBO ebo;
-  mat4s mat;
-} Object;
+  Object obj = {
+    .vertPtr = vertices,
+    .vertSize = vertSize,
+    .vertCount = vertSize / floatSize,
+    .indPtr = indices,
+    .indSize = indSize,
+    .indCount = indSize / GLuintSize,
+    .mat = GLMS_MAT4_IDENTITY_INIT,
+    .vao = vaoCreate(1),
+    .vbo = vboCreate(1),
+    .ebo = eboCreate(1)
+  };
+
+  return obj;
+}
 
 void objectLoadShaders(Object* self, const char* vsPath, const char* fsPath) {
   // A vertex shader reference
@@ -92,6 +93,4 @@ void objectDelete(Object* self) {
   eboDelete(&self->ebo);
   glDeleteProgram(self->shaderProgram);
 }
-
-#endif
 

@@ -1,11 +1,4 @@
-#ifndef VBO_H
-#define VBO_H
-
-// Vertex Buffer Object
-struct VBO {
-  GLuint id;
-  GLsizei size;
-};
+#include "vbo.h"
 
 struct VBO vboCreate(GLsizei size) {
   struct VBO vbo;
@@ -27,6 +20,4 @@ void vboUnbind(void) {
 void vboDelete(const struct VBO* self) {
   glDeleteBuffers(self->size, &self->id);
 }
-
-#endif
 

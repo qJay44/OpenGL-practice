@@ -1,11 +1,4 @@
-#ifndef EBO_H
-#define EBO_H
-
-// Element Buffer Object
-struct EBO {
-  GLuint id;
-  GLsizei size;
-};
+#include "ebo.h"
 
 struct EBO eboCreate(GLsizei size) {
   struct EBO ebo;
@@ -27,6 +20,4 @@ void eboUnbind(void) {
 void eboDelete(const struct EBO* self) {
   glDeleteBuffers(self->size, &self->id);
 }
-
-#endif
 

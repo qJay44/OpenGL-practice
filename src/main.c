@@ -1,8 +1,7 @@
 #include <stdio.h>
 
-#include "GLFW/glfw3.h"
+#include "mesh/object.h"
 #include "inputs.h"
-#include "object.h"
 #include "camera.h"
 #include "texture.h"
 
@@ -44,14 +43,7 @@ int main() {
   Texture planksSpecTex = textureCreate("../../src/textures/planksSpec.png", GL_TEXTURE_2D, GL_TEXTURE1, GL_RED, GL_RGBA);
   vec4s lightColor = {1.f, 1.f, 1.f, 1.f};
 
-  Camera camera = {
-    .position = {-1.f, 1.f, 2.f},
-    .orientation = {0.5f, -0.3f, -1.f},
-    .up = {0.f, 1.f, 0.f},
-    .aspectRatio = 1.f,
-    .speed = 100.f,
-    .sensitivity = 100.f,
-  };
+  Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
   //========== Illumination cube ==========//
 
@@ -83,19 +75,7 @@ int main() {
     4, 6, 7
   };
 
-  Object light = {
-    .vertPtr = lightVertices,
-    .vertSize = sizeof(lightVertices),
-    .vertCount = sizeof(lightVertices)/sizeof(lightVertices[0]),
-    .indPtr = lightIndices,
-    .indSize = sizeof(lightIndices),
-    .indCount = sizeof(lightIndices)/sizeof(lightIndices[0]),
-    .mat = GLMS_MAT4_IDENTITY_INIT,
-    .vao = vaoCreate(1),
-    .vbo = vboCreate(1),
-    .ebo = eboCreate(1)
-  };
-
+  Object light = objectCreate(lightVertices, sizeof(lightVertices), lightIndices, sizeof(lightIndices));
   objectLoadShaders(&light, "../../src/shaders/light.vert", "../../src/shaders/light.frag");
   objectBind(&light);
   objectLinkAttrib(&light, 0, 3, 3, 0);
@@ -109,7 +89,7 @@ int main() {
 
   //=======================================//
 
-  //================= Pyramid =================//
+  //================= Main object =================//
 
   // z+ towards us, z- away from us
   GLfloat mainVertices[] = {
@@ -126,19 +106,7 @@ int main() {
     0, 2, 3
   };
 
-  Object main = {
-    .vertPtr = mainVertices,
-    .vertSize = sizeof(mainVertices),
-    .vertCount = sizeof(mainVertices)/sizeof(mainVertices[0]),
-    .indPtr = mainIndices,
-    .indSize = sizeof(mainIndices),
-    .indCount = sizeof(mainIndices)/sizeof(mainIndices[0]),
-    .mat = GLMS_MAT4_IDENTITY_INIT,
-    .vao = vaoCreate(1),
-    .vbo = vboCreate(1),
-    .ebo = eboCreate(1)
-  };
-
+  Object main = objectCreate(mainVertices, sizeof(mainVertices), mainIndices, sizeof(mainIndices));
   objectLoadShaders(&main, "../../src/shaders/main.vert", "../../src/shaders/main.frag");
   objectBind(&main);
 
