@@ -3,38 +3,38 @@
 
 #include "shader.h"
 
-GLint shaderLoad(const char* path, int type) {
-  if (type != GL_VERTEX_SHADER && type != GL_FRAGMENT_SHADER) {
-    printf("Shader load error: specified type is wrong\n");
-    exit(1);
-  }
-
+GLuint load(const char* path, int type) {
   char shaderStr[4096];
   readFile(path, shaderStr, 4096, false);
 
   const char* ptrShaderStr = shaderStr;
-  GLuint shader = glCreateShader(type);
-  glShaderSource(shader, 1, &ptrShaderStr, NULL);
+  GLuint shaderId = glCreateShader(type);
+  glShaderSource(shaderId, 1, &ptrShaderStr, NULL);
 
-  return shader;
+  return shaderId;
 }
 
-void shaderCompile(GLuint shader) {
+GLint compile(const char* path, int type) {
+  GLint shaderId = load(path, type);
+
   GLint hasCompiled;
   char infoLog[1024];
 
-  glCompileShader(shader);
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
+  glCompileShader(shaderId);
+  glGetShaderiv(shaderId, GL_COMPILE_STATUS, &hasCompiled);
 
   // if GL_FALSE
   if (!hasCompiled) {
-    glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+    glGetShaderInfoLog(shaderId, 1024, NULL, infoLog);
+    printf("\nShader: %s\n", path);
     printf("\n===== Shader compilation error =====\n\n%s", infoLog);
     printf("====================================\n\n");
   }
+
+  return shaderId;
 }
 
-void shaderProgramLink(GLuint program) {
+void link(GLuint program) {
   GLint hasLinked;
   char infoLog[1024];
 
@@ -47,5 +47,20 @@ void shaderProgramLink(GLuint program) {
     printf("\n===== Shader link error =====\n\n%s", infoLog);
     printf("\n=============================\n\n");
   }
+}
+
+GLint shaderCreate(const char* vsPath, const char* fsPath) {
+  GLint vertexShaderId = compile(vsPath, GL_VERTEX_SHADER);
+  GLint fragmentShaderId = compile(fsPath, GL_FRAGMENT_SHADER);
+
+  GLint shaderProgram = glCreateProgram();
+  glAttachShader(shaderProgram, vertexShaderId);
+  glAttachShader(shaderProgram, fragmentShaderId);
+  link(shaderProgram);
+
+  glDeleteShader(vertexShaderId);
+  glDeleteShader(fragmentShaderId);
+
+  return shaderProgram;
 }
 

@@ -5,6 +5,7 @@
 #include "vao.h"
 #include "vbo.h"
 #include "ebo.h"
+#include "texture.h"
 
 typedef struct {
   const float* vertPtr;
@@ -14,25 +15,27 @@ typedef struct {
   int indSize;
   int indCount;
 
-  GLint shaderProgram;
+  const GLint* shaderProgram;
   struct VAO vao;
   struct VBO vbo;
   struct EBO ebo;
   mat4s mat;
+
+  const Texture* textures[8];
+  int texturesAmount;
 } Object;
 
 [[nodiscard]]
-Object objectCreate(const float* vertices, int vertSize, const GLuint* indices, int indSize);
+Object objectCreate(const float* vertices, int vertSize, const GLuint* indices, int indSize, const GLint* shader);
 
-void objectLoadShaders(Object* self, const char* vsPath, const char* fsPath);
-void objectBind(Object* self);
-void objectUnbind();
-void objectLinkAttrib(Object* self, GLuint loc, GLuint numComponents, GLuint strideLen, unsigned long long offsetLen);
+void objectAddTexture(Object* self, const Texture* tex);
 void objectTranslate(Object* self, vec3s v);
-void objectSetMatrixUniform(Object* self, const char* name);
-void objectSetVec3Unifrom(Object* self, const char* name, vec3s v);
-void objectSetVec4Unifrom(Object* self, const char* name, vec4s v);
-void objectDraw(Object* self);
+void objectSetMatrixUniform(const Object* self, const char* name);
+void objectSetVec3Unifrom(const Object* self, const char* name, vec3s v);
+void objectSetVec4Unifrom(const Object* self, const char* name, vec4s v);
+void objectSetTextureUnifrom(const Object* self, const char* name, GLuint slot);
+void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name);
+void objectDraw(const Object* self);
 void objectDelete(Object* self);
 
 #endif

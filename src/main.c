@@ -1,9 +1,9 @@
 #include <stdio.h>
 
+#include "mesh/shader.h"
 #include "mesh/object.h"
 #include "inputs.h"
 #include "camera.h"
-#include "texture.h"
 
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -49,14 +49,15 @@ int main() {
 
   // z+ towards us, z- away from us
   GLfloat lightVertices[] = {
-    -0.1f, -0.1f,  0.1f,
-    -0.1f, -0.1f, -0.1f,
-     0.1f, -0.1f, -0.1f,
-     0.1f, -0.1f,  0.1f,
-    -0.1f,  0.1f,  0.1f,
-    -0.1f,  0.1f, -0.1f,
-     0.1f,  0.1f, -0.1f,
-     0.1f,  0.1f,  0.1f
+    // coordinates           // colors          // texture    // normals
+    -0.1f, -0.1f,  0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
+    -0.1f, -0.1f, -0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
+     0.1f, -0.1f, -0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
+     0.1f, -0.1f,  0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
+    -0.1f,  0.1f,  0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
+    -0.1f,  0.1f, -0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
+     0.1f,  0.1f, -0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
+     0.1f,  0.1f,  0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
   };
 
   // Triangles indices of vertices
@@ -75,17 +76,11 @@ int main() {
     4, 6, 7
   };
 
-  Object light = objectCreate(lightVertices, sizeof(lightVertices), lightIndices, sizeof(lightIndices));
-  objectLoadShaders(&light, "../../src/shaders/light.vert", "../../src/shaders/light.frag");
-  objectBind(&light);
-  objectLinkAttrib(&light, 0, 3, 3, 0);
-  objectUnbind();
-
+  GLint lightShader = shaderCreate("../../src/shaders/light.vert", "../../src/shaders/light.frag");
+  Object light = objectCreate(lightVertices, sizeof(lightVertices), lightIndices, sizeof(lightIndices), &lightShader);
   vec3s lightPos = {0.5f, 0.5f, 0.5f};
-  objectTranslate(&light, lightPos);
 
-  objectSetMatrixUniform(&light, "matModel");
-  objectSetVec4Unifrom(&light, "lightColor", lightColor);
+  objectTranslate(&light, lightPos);
 
   //=======================================//
 
@@ -93,7 +88,6 @@ int main() {
 
   // z+ towards us, z- away from us
   GLfloat mainVertices[] = {
-    // coordinates       // colors          // texture    // normals
     -1.f, 0.f,  1.f,     0.f, 0.f, 0.f,     0.f, 0.f,     0.f, 1.f, 0.f,
     -1.f, 0.f, -1.f,     0.f, 0.f, 0.f,     0.f, 1.f,     0.f, 1.f, 0.f,
      1.f, 0.f, -1.f,     0.f, 0.f, 0.f,     1.f, 1.f,     0.f, 1.f, 0.f,
@@ -106,29 +100,25 @@ int main() {
     0, 2, 3
   };
 
-  Object main = objectCreate(mainVertices, sizeof(mainVertices), mainIndices, sizeof(mainIndices));
-  objectLoadShaders(&main, "../../src/shaders/main.vert", "../../src/shaders/main.frag");
-  objectBind(&main);
+  GLint mainShader = shaderCreate("../../src/shaders/main.vert", "../../src/shaders/main.frag");
+  Object main = objectCreate(mainVertices, sizeof(mainVertices), mainIndices, sizeof(mainIndices), &mainShader);
+  objectAddTexture(&main, &planksTex);
+  objectAddTexture(&main, &planksSpecTex);
 
-  objectLinkAttrib(&main, 0, 3, 11, 0);
-  objectLinkAttrib(&main, 1, 3, 11, 3);
-  objectLinkAttrib(&main, 2, 2, 11, 6);
-  objectLinkAttrib(&main, 3, 3, 11, 8);
+  //=============================================//
 
-  objectUnbind();
-  textureSetUniform(main.shaderProgram, "tex0", 0);
-  textureSetUniform(main.shaderProgram, "tex1", 1);
+  //===== Uniforms =====//
 
-  {
-    vec3s pyramidPos = {0.f, 0.f, 0.f};
-    objectTranslate(&main, pyramidPos);
-  }
+  objectSetMatrixUniform(&light, "matModel");
+  objectSetVec4Unifrom(&light, "lightColor", lightColor);
 
   objectSetMatrixUniform(&main, "matModel");
   objectSetVec4Unifrom(&main, "lightColor", lightColor);
   objectSetVec3Unifrom(&main, "lightPos", lightPos);
+  objectSetTextureUnifrom(&main, "tex0", 0);
+  objectSetTextureUnifrom(&main, "tex1", 1);
 
-  //=============================================//
+  //====================//
 
   glEnable(GL_DEPTH_TEST);
 
@@ -157,13 +147,11 @@ int main() {
     objectSetVec3Unifrom(&main, "camPos", camera.position);
 
     // Working with pyramid shader
-    cameraSetMatrixUniform(&camera, main.shaderProgram, "matCam");
-    textureBind(&planksTex, GL_TEXTURE_2D);
-    textureBind(&planksSpecTex, GL_TEXTURE_2D);
+    objectSetCameraMatrixUnifrom(&main, (const GLfloat*)camera.mat.raw, "matCam");
     objectDraw(&main);
 
     // Working with light shader
-    cameraSetMatrixUniform(&camera, light.shaderProgram, "matCam");
+    objectSetCameraMatrixUnifrom(&light, (const GLfloat*)camera.mat.raw, "matCam");
     objectDraw(&light);
 
     glfwSwapBuffers(window);

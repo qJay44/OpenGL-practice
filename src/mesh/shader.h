@@ -2,9 +2,7 @@
 #define SHADER_H
 
 [[nodiscard]]
-GLint shaderLoad(const char* path, int type);
-void shaderCompile(GLuint shader);
-void shaderProgramLink(GLuint program);
+GLint shaderCreate(const char* vsPath, const char* fsPath);
 
 #endif
 

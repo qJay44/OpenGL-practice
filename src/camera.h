@@ -13,7 +13,6 @@ typedef struct {
 Camera cameraCreate(vec3s pos, vec3s orientation, float sensitivity);
 
 void cameraUpdate(Camera* self, float fov, float nearPlane, float farPlane, float aspectRatio, float dt);
-void cameraSetMatrixUniform(Camera* self, GLint shaderProgram, const char* name);
 void cameraMoveForward(Camera* self);
 void cameraMoveBack(Camera* self);
 void cameraMoveLeft(Camera* self);

@@ -1,12 +1,5 @@
-#ifndef TEXTURE_H
-#define TEXTURE_H
+#include "texture.h"
 
-typedef struct {
-  GLuint id;
-  GLuint slot;
-} Texture;
-
-[[nodiscard]]
 Texture textureCreate(const char* path, GLenum texType, GLenum slot, GLenum formatIn, GLenum formatOut) {
   int imgWidth, imgHeight, imgColorChannels;
   stbi_set_flip_vertically_on_load(true);
@@ -37,7 +30,7 @@ Texture textureCreate(const char* path, GLenum texType, GLenum slot, GLenum form
   return tex;
 }
 
-void textureBind(Texture* self, GLenum texType) {
+void textureBind(const Texture* self, GLenum texType) {
   glActiveTexture(self->slot);
   glBindTexture(texType, self->id);
 }
@@ -46,15 +39,7 @@ void textureUnbind(GLenum texType) {
   glBindTexture(texType, 0);
 }
 
-void textureSetUniform(GLint shaderProgram, const char* name, GLuint unit) {
-  GLuint uniTex = glGetUniformLocation(shaderProgram, name);
-  glUseProgram(shaderProgram);
-  glUniform1i(uniTex, unit);
-}
-
 void textureDelete(Texture* self, GLsizei num) {
   glDeleteTextures(num, &self->id);
 }
-
-#endif
 

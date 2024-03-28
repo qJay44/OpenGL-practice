@@ -30,12 +30,6 @@ void cameraUpdate(Camera* self, float fov, float nearPlane, float farPlane, floa
   self->mat = glms_mat4_mul(proj, view);
 }
 
-void cameraSetMatrixUniform(Camera* self, GLint shaderProgram, const char* name) {
-  glUseProgram(shaderProgram);
-  GLint loc = glGetUniformLocation(shaderProgram, name);
-  glUniformMatrix4fv(loc, 1, GL_FALSE, (const GLfloat*)&self->mat.raw);
-}
-
 void cameraMoveForward(Camera* self) {
   vec3s quotient = glms_vec3_scale(self->orientation, self->speed);
   self->position = glms_vec3_add(self->position, quotient);
