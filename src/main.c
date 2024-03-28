@@ -82,11 +82,8 @@ int main() {
 
   objectTranslate(&light, lightPos);
 
-  //=======================================//
+  //====== Main object ====================//
 
-  //================= Main object =================//
-
-  // z+ towards us, z- away from us
   GLfloat mainVertices[] = {
     -1.f, 0.f,  1.f,     0.f, 0.f, 0.f,     0.f, 0.f,     0.f, 1.f, 0.f,
     -1.f, 0.f, -1.f,     0.f, 0.f, 0.f,     0.f, 1.f,     0.f, 1.f, 0.f,
@@ -105,12 +102,9 @@ int main() {
   objectAddTexture(&main, &planksTex);
   objectAddTexture(&main, &planksSpecTex);
 
-  //=============================================//
-
-  //===== Uniforms =====//
+  //===== Uniforms ==============================//
 
   objectSetMatrixUniform(&light, "matModel");
-  objectSetVec4Unifrom(&light, "lightColor", lightColor);
 
   objectSetMatrixUniform(&main, "matModel");
   objectSetVec4Unifrom(&main, "lightColor", lightColor);
@@ -118,7 +112,7 @@ int main() {
   objectSetTextureUnifrom(&main, "tex0", 0);
   objectSetTextureUnifrom(&main, "tex1", 1);
 
-  //====================//
+  //=============================================//
 
   glEnable(GL_DEPTH_TEST);
 
