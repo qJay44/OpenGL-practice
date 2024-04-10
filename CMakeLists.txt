@@ -19,8 +19,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   ${GLFW_PATH}/include
   ${STB_PATH}/include
   ${CGLM_PATH}/include
+  ${JSONC_PATH}/include
 )
 
-target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_PATH}/lib-mingw-w64)
-target_link_libraries(${PROJECT_NAME} PUBLIC glfw3)
+target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_PATH}/lib-mingw-w64 ${JSONC_PATH}/lib)
+target_link_libraries(${PROJECT_NAME} PUBLIC glfw3 json-c)
 

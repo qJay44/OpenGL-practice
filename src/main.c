@@ -2,6 +2,7 @@
 
 #include "mesh/shader.h"
 #include "mesh/object.h"
+#include "mesh/model.h"
 #include "inputs.h"
 #include "camera.h"
 
@@ -17,6 +18,8 @@ int main() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+  Model model = modelCreate("../../src/mesh/models/sword/");
 
   // Window init
   GLFWwindow* window = glfwCreateWindow(1200, 720, "LearnOpenGL", NULL, NULL);
@@ -155,6 +158,7 @@ int main() {
   objectDelete(&main);
   objectDelete(&light);
   textureDelete(&planksTex, 1);
+  modelDelete(&model);
 
   glfwTerminate();
   return 0;
