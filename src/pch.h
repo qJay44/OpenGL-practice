@@ -3,4 +3,5 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include "utils.h"
+#include "types.h"
 #include "stb_image.h"
