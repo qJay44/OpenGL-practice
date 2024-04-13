@@ -1,10 +1,11 @@
 #include "model.h"
+#include "object.h"
 #include <stdlib.h>
 #include <string.h>
 
 #define DATA_SIZE 100 * 1000 // 100 KB
 
-static void getData(Model* self) {
+static void setData(Model* self) {
   json* buffers;
   json* uri;
   json_object_object_get_ex(self->json, "buffers", &buffers);
@@ -26,7 +27,7 @@ static void getData(Model* self) {
   free(dataPath);
 }
 
-static void getFloats(Model* self, json* accessor, float* out, u32 outIdx, u32 outIdxLimit) {
+static void getFloats(const Model* self, const json* accessor, float* out, u32 outIdx, u32 outIdxLimit) {
   u32 buffViewInd = 1;
   u32 accByteOffset = 0;
 
@@ -80,7 +81,7 @@ static void getFloats(Model* self, json* accessor, float* out, u32 outIdx, u32 o
   }
 }
 
-static void getIndices(Model* self, json* accessor, GLuint* out, u32 outIdx, u32 outIdxLimit) {
+static void getIndices(const Model* self, const json* accessor, GLuint* out, u32 outIdx, u32 outIdxLimit) {
   u32 buffViewInd = 0;
   u32 accByteOffset = 0;
 
@@ -158,6 +159,70 @@ static void getIndices(Model* self, json* accessor, GLuint* out, u32 outIdx, u32
   }
 }
 
+static void getFloatsVec2(const float* vecs, u32 vecsCount, vec2s* out, u32 outIdx, u32 outIdxLimit) {
+  for (int i = 0; i < vecsCount; i++) {
+    if (outIdx > outIdxLimit) {
+      printf("getFloatsVec2: out vecs index is out of range");
+      exit(EXIT_FAILURE);
+    }
+
+    u32 ii = i << 1;
+    out[outIdx++] = (vec2s){vecs[ii], vecs[ii + 1]};
+  }
+}
+
+static void getFloatsVec3(const float* vecs, u32 vecsCount, vec3s* out, u32 outIdx, u32 outIdxLimit) {
+  for (int i = 0; i < vecsCount; i += 3) {
+    if (outIdx > outIdxLimit) {
+      printf("getFloatsVec3: out vecs index is out of range");
+      exit(EXIT_FAILURE);
+    }
+
+    out[outIdx++] = (vec3s){vecs[i], vecs[i + 1], vecs[i + 2]};
+  }
+}
+
+static void getFloatsVec4(const float* vecs, u32 vecsCount, vec4s* out, u32 outIdx, u32 outIdxLimit) {
+  for (int i = 0; i < vecsCount; i++) {
+    if (outIdx > outIdxLimit) {
+      printf("getFloatsVec4: out vecs index is out of range");
+      exit(EXIT_FAILURE);
+    }
+
+    u32 ii = i << 2;
+    out[outIdx++] = (vec4s){vecs[ii], vecs[ii + 1], vecs[ii + 2], vecs[ii + 3]};
+  }
+}
+
+static void assembleVertices(
+    vec3s* positions,
+    vec3s* normals,
+    vec2s* texUVs,
+    u32 idx,
+    Object* out, u32 outIdx, u32 outIdxLimit
+) {
+  for (int i = 0; i <= idx; i++) {
+    if (outIdx > outIdxLimit) {
+      printf("assembleVertice: out index is out of range");
+      exit(EXIT_FAILURE);
+    }
+
+    const float vertices[10] = {
+      positions[i].x, positions[i].y, positions[i].z,
+      normals[i].x, normals[i].y, normals[i].z,
+      texUVs[i].x, texUVs[i].y
+    };
+
+    Object vertex = {
+      .vertPtr = vertices,
+      .vertSize = 10 * sizeof(float),
+      .vertCount = 10
+    };
+
+    out[outIdx++] = vertex;
+  }
+}
+
 Model modelCreate(const char* modelDirectory) {
   static const char* sceneGLTF = "scene.gltf";
 
@@ -174,7 +239,7 @@ Model modelCreate(const char* modelDirectory) {
 
   model.json = json_tokener_parse(buffer);
   model.dirPath = modelDirectory;
-  getData(&model);
+  setData(&model);
 
   free(gltfPath);
   return model;

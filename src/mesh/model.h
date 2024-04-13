@@ -3,6 +3,7 @@
 
 #include "cglm/types-struct.h"
 #include "json-c/json.h"
+#include "object.h"
 
 typedef struct json_object json;
 
@@ -12,12 +13,20 @@ typedef struct {
   json* json;
 } Model;
 
-static void getData(Model* self);
-static void getFloats(Model* self, json* accessor, float* out, u32 outIdx, u32 outIdxLimit);
-static void getIndices(Model* self, json* accessor, GLuint* out, u32 outIdx, u32 outIdxLimit);
-static void getFloatsVec2(float* vecs, vec2s* out);
-static void getFloatsVec3(float* vecs, vec3s* out);
-static void getFloatsVec4(float* vecs, vec4s* out);
+static void setData(Model* self);
+static void getFloats(const Model* self, const json* accessor, float* out, u32 outIdx, u32 outIdxLimit);
+static void getIndices(const Model* self, const json* accessor, GLuint* out, u32 outIdx, u32 outIdxLimit);
+static void getFloatsVec2(const float* vecs, u32 vecsCount, vec2s* out, u32 outIdx, u32 outIdxLimit);
+static void getFloatsVec3(const float* vecs, u32 vecsCount, vec3s* out, u32 outIdx, u32 outIdxLimit);
+static void getFloatsVec4(const float* vecs, u32 vecsCount, vec4s* out, u32 outIdx, u32 outIdxLimit);
+
+static void assembleVertices(
+    vec3s* positions,
+    vec3s* normals,
+    vec2s* texUVs,
+    u32 idx,
+    Object* out, u32 outIdx, u32 outIdxLimit
+);
 
 [[nodiscard]]
 Model modelCreate(const char* modelDirectory);
