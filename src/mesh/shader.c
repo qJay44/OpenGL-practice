@@ -4,13 +4,12 @@
 #include "shader.h"
 
 GLuint load(const char* path, int type) {
-  char shaderStr[4096];
-  readFile(path, shaderStr, 4096, false);
-
-  const char* ptrShaderStr = shaderStr;
+  char* shaderStr = readFile(path, false);
+  const char* shaderStrPtr = shaderStr;
   GLuint shaderId = glCreateShader(type);
-  glShaderSource(shaderId, 1, &ptrShaderStr, NULL);
+  glShaderSource(shaderId, 1, &shaderStrPtr, NULL);
 
+  free(shaderStr);
   return shaderId;
 }
 

@@ -4,11 +4,12 @@
 typedef struct {
   GLuint id;
   GLuint slot;
+  GLenum type;
 } Texture;
 
 [[nodiscard]]
-Texture textureCreate(const char* path, GLenum texType, GLenum slot, GLenum formatIn, GLenum formatOut);
-void textureBind(const Texture* self, GLenum texType);
+Texture textureCreate2D(const char* path, GLenum slot);
+void textureBind(const Texture* self);
 void textureUnbind(GLenum texType);
 void textureDelete(Texture* self, GLsizei num);
 

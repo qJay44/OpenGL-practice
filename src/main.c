@@ -42,8 +42,8 @@ int main() {
   glViewport(0, 0, 1200, 720);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
-  Texture planksTex = textureCreate("../../src/textures/planks.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_RGBA);
-  Texture planksSpecTex = textureCreate("../../src/textures/planksSpec.png", GL_TEXTURE_2D, GL_TEXTURE1, GL_RED, GL_RGBA);
+  Texture planksTex = textureCreate2D("../../src/textures/planks.png", GL_TEXTURE0);
+  Texture planksSpecTex = textureCreate2D("../../src/textures/planksSpec.png", GL_TEXTURE1);
   vec4s lightColor = {1.f, 1.f, 1.f, 1.f};
 
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);

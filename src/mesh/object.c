@@ -4,8 +4,8 @@
 #include <stdio.h>
 
 Object objectCreate(const float* vertices, int vertSize, const GLuint* indices, int indSize, const GLint* shader) {
-  static const unsigned char floatSize = sizeof(float);
-  static const unsigned char GLuintSize = sizeof(GLuint);
+  static const int floatSize = sizeof(float);
+  static const int GLuintSize = sizeof(GLuint);
 
   Object obj = {
     .vertPtr = vertices,
@@ -90,7 +90,7 @@ void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const 
 
 void objectDraw(const Object* self) {
   for (int i = 0; i < self->texturesAmount; i++)
-    textureBind(self->textures[i], GL_TEXTURE_2D);
+    textureBind(self->textures[i]);
 
   glBindVertexArray(self->vao.id);
   glDrawElements(GL_TRIANGLES, self->indCount, GL_UNSIGNED_INT, 0);

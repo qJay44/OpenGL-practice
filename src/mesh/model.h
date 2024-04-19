@@ -13,12 +13,12 @@ typedef struct {
   json* json;
 } Model;
 
-static void setData(Model* self);
-static void getFloats(const Model* self, const json* accessor, float* out, u32 outIdx, u32 outIdxLimit);
-static void getIndices(const Model* self, const json* accessor, GLuint* out, u32 outIdx, u32 outIdxLimit);
-static void getFloatsVec2(const float* vecs, u32 vecsCount, vec2s* out, u32 outIdx, u32 outIdxLimit);
-static void getFloatsVec3(const float* vecs, u32 vecsCount, vec3s* out, u32 outIdx, u32 outIdxLimit);
-static void getFloatsVec4(const float* vecs, u32 vecsCount, vec4s* out, u32 outIdx, u32 outIdxLimit);
+static char* getData(const Model* self);
+static float* getFloats(const Model* self, const json* accessor);
+static GLuint* getIndices(const Model* self, const json* accessor);
+static vec2s* getFloatsVec2(const float* vecs, u32 vecsCount);
+static vec3s* getFloatsVec3(const float* vecs, u32 vecsCount);
+static vec4s* getFloatsVec4(const float* vecs, u32 vecsCount);
 
 static void assembleVertices(
     vec3s* positions,

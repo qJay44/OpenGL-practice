@@ -5,10 +5,11 @@
 
 #define DATA_SIZE 100 * 1000 // 100 KB
 
-static void setData(Model* self) {
+static char* getData(const Model* self) {
   json* buffers;
   json* uri;
-  json_object_object_get_ex(self->json, "buffers", &buffers);
+  if (!json_object_object_get_ex(self->json, "buffers", &buffers))
+    printf("Can't get \"buffers\" from json\n");
 
   json* buffer0 = json_object_array_get_idx(buffers, 0);
   json_object_object_get_ex(buffer0, "uri", &uri);
@@ -20,14 +21,11 @@ static void setData(Model* self) {
   concat(self->dirPath, uriStr, dataPath, size);
 
   // Read data
-  char* buffer = malloc(DATA_SIZE);
-  readFile(dataPath, buffer, DATA_SIZE / sizeof(char), false);
-  self->data = buffer;
-
   free(dataPath);
+  return readFile(dataPath,  false);
 }
 
-static void getFloats(const Model* self, const json* accessor, float* out, u32 outIdx, u32 outIdxLimit) {
+static float* getFloats(const Model* self, const json* accessor) {
   u32 buffViewInd = 1;
   u32 accByteOffset = 0;
 
@@ -67,21 +65,28 @@ static void getFloats(const Model* self, const json* accessor, float* out, u32 o
 
   u32 beginningOfData = byteOffset + accByteOffset;
   u32 lengthOfData = count * 4 * numPerVert;
+
+  u32 outMaxItems = DEFAULT_BUFFER_ITEMS;
+  u32 outIdx = 0;
+  float* out = malloc(sizeof(float) * outMaxItems);
+
   for (u32 i = beginningOfData; i < beginningOfData + lengthOfData; i++) {
-    if (outIdx > outIdxLimit) {
-      printf("getFloats: out array index is out of range");
-      exit(EXIT_FAILURE);
+    if (outIdx == outMaxItems) {
+      arrResizeFloat(&out, outMaxItems * 2);
+      outMaxItems *= 2;
     }
 
     u32 ii = i << 2;
-    unsigned char bytes[4] = {self->data[ii], self->data[ii + 1], self->data[ii + 2], self->data[ii + 3]};
+    byte bytes[4] = {self->data[ii], self->data[ii + 1], self->data[ii + 2], self->data[ii + 3]};
     float value;
     memcpy(&value, bytes, sizeof(float));
     out[outIdx++] = value;
   }
+
+  return out;
 }
 
-static void getIndices(const Model* self, const json* accessor, GLuint* out, u32 outIdx, u32 outIdxLimit) {
+static GLuint* getIndices(const Model* self, const json* accessor) {
   u32 buffViewInd = 0;
   u32 accByteOffset = 0;
 
@@ -110,17 +115,22 @@ static void getIndices(const Model* self, const json* accessor, GLuint* out, u32
   u32 byteOffset = json_object_get_int(jByteOffset);
 
   u32 beginningOfData = byteOffset + accByteOffset;
+
+  u32 outMaxItems = DEFAULT_BUFFER_ITEMS;
+  u32 outIdx = 0;
+  uint* out = malloc(sizeof(uint) * outMaxItems);
+
   switch (componentType) {
     // unsigned int
     case 5125:
       for (u32 i = beginningOfData; i < byteOffset + accByteOffset + count * 4; i++) {
-        if (outIdx > outIdxLimit) {
-          printf("getIndices: out array index is out of range");
-          exit(EXIT_FAILURE);
+        if (outIdx == outMaxItems) {
+          arrResizeUint(&out, outMaxItems * 2);
+          outMaxItems *= 2;
         }
 
         u32 ii = i << 2;
-        unsigned char bytes[4] = {self->data[ii], self->data[ii + 1], self->data[ii + 2], self->data[ii + 3]};
+        byte bytes[4] = {self->data[ii], self->data[ii + 1], self->data[ii + 2], self->data[ii + 3]};
         unsigned int value;
         memcpy(&value, bytes, sizeof(unsigned int));
         out[outIdx++] = (GLuint)value;
@@ -129,13 +139,13 @@ static void getIndices(const Model* self, const json* accessor, GLuint* out, u32
     // unsigned short
     case 5123:
       for (u32 i = beginningOfData; i < byteOffset + accByteOffset + count * 2; i++) {
-        if (outIdx > outIdxLimit) {
-          printf("getIndices: out array index is out of range");
-          exit(EXIT_FAILURE);
+        if (outIdx == outMaxItems) {
+          arrResizeUint(&out, outMaxItems * 2);
+          outMaxItems *= 2;
         }
 
         u32 ii = i << 1;
-        unsigned char bytes[2] = {self->data[ii], self->data[ii + 1]};
+        byte bytes[2] = {self->data[ii], self->data[ii + 1]};
         unsigned short value;
         memcpy(&value, bytes, sizeof(unsigned short));
         out[outIdx++] = (GLuint)value;
@@ -144,26 +154,32 @@ static void getIndices(const Model* self, const json* accessor, GLuint* out, u32
     // short
     case 5122:
       for (u32 i = beginningOfData; i < byteOffset + accByteOffset + count * 2; i++) {
-        if (outIdx > outIdxLimit) {
-          printf("getIndices: out array index is out of range");
-          exit(EXIT_FAILURE);
+        if (outIdx == outMaxItems) {
+          arrResizeUint(&out, outMaxItems * 2);
+          outMaxItems *= 2;
         }
 
         u32 ii = i << 1;
-        unsigned char bytes[2] = {self->data[ii], self->data[ii + 1]};
+        byte bytes[2] = {self->data[ii], self->data[ii + 1]};
         short value;
         memcpy(&value, bytes, sizeof(short));
         out[outIdx++] = (GLuint)value;
       }
       break;
   }
+
+  return (GLuint*)out;
 }
 
-static void getFloatsVec2(const float* vecs, u32 vecsCount, vec2s* out, u32 outIdx, u32 outIdxLimit) {
+static vec2s* getFloatsVec2(const float* vecs, u32 vecsCount) {
+  u32 outMaxItems = DEFAULT_BUFFER_ITEMS;
+  u32 outIdx = 0;
+  vec2s* out = malloc(sizeof(vec2s) * outMaxItems);
+
   for (int i = 0; i < vecsCount; i++) {
-    if (outIdx > outIdxLimit) {
-      printf("getFloatsVec2: out vecs index is out of range");
-      exit(EXIT_FAILURE);
+    if (outIdx == outMaxItems) {
+      arrResizeVec2s(&out, outMaxItems * 2);
+      outMaxItems *= 2;
     }
 
     u32 ii = i << 1;
@@ -171,22 +187,30 @@ static void getFloatsVec2(const float* vecs, u32 vecsCount, vec2s* out, u32 outI
   }
 }
 
-static void getFloatsVec3(const float* vecs, u32 vecsCount, vec3s* out, u32 outIdx, u32 outIdxLimit) {
+static vec3s* getFloatsVec3(const float* vecs, u32 vecsCount) {
+  u32 outMaxItems = DEFAULT_BUFFER_ITEMS;
+  u32 outIdx = 0;
+  vec3s* out = malloc(sizeof(vec3s) * outMaxItems);
+
   for (int i = 0; i < vecsCount; i += 3) {
-    if (outIdx > outIdxLimit) {
-      printf("getFloatsVec3: out vecs index is out of range");
-      exit(EXIT_FAILURE);
+    if (outIdx == outMaxItems) {
+      arrResizeVec3s(&out, outMaxItems * 2);
+      outMaxItems *= 2;
     }
 
     out[outIdx++] = (vec3s){vecs[i], vecs[i + 1], vecs[i + 2]};
   }
 }
 
-static void getFloatsVec4(const float* vecs, u32 vecsCount, vec4s* out, u32 outIdx, u32 outIdxLimit) {
+static vec4s* getFloatsVec4(const float* vecs, u32 vecsCount) {
+  u32 outMaxItems = DEFAULT_BUFFER_ITEMS;
+  u32 outIdx = 0;
+  vec4s* out = malloc(sizeof(vec4s) * outMaxItems);
+
   for (int i = 0; i < vecsCount; i++) {
-    if (outIdx > outIdxLimit) {
-      printf("getFloatsVec4: out vecs index is out of range");
-      exit(EXIT_FAILURE);
+    if (outIdx == outMaxItems) {
+      arrResizeVec4s(&out, outMaxItems * 2);
+      outMaxItems *= 2;
     }
 
     u32 ii = i << 2;
@@ -234,14 +258,14 @@ Model modelCreate(const char* modelDirectory) {
   concat(modelDirectory, sceneGLTF, gltfPath, size);
 
   // Read .gltf
-  char buffer[0xffff];
-  readFile(gltfPath, buffer, 0xffff, false);
+  char* buffer = readFile(gltfPath, false);
 
   model.json = json_tokener_parse(buffer);
   model.dirPath = modelDirectory;
-  setData(&model);
+  model.data = getData(&model);
 
   free(gltfPath);
+  free(buffer);
   return model;
 }
 
