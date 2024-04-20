@@ -4,6 +4,8 @@
 #include <string.h>
 
 #define DATA_SIZE 100 * 1000 // 100 KB
+#define TEXTURE_NAME_LENGTH 0xff // Maxmimum allowed characters per char* for textures
+#define DEFAULT_TEXTURE_NAMES 20 // Length of array of textures names
 
 static char* getData(const Model* self) {
   json* buffers;
@@ -12,7 +14,8 @@ static char* getData(const Model* self) {
     printf("Can't get \"buffers\" from json\n");
 
   json* buffer0 = json_object_array_get_idx(buffers, 0);
-  json_object_object_get_ex(buffer0, "uri", &uri);
+  if (!json_object_object_get_ex(buffer0, "uri", &uri))
+    printf("Can't get \"uri\" from first buffer\n");
   const char* uriStr = json_object_get_string(uri);
 
   // Folder + file
@@ -72,7 +75,7 @@ static float* getFloats(const Model* self, const json* accessor) {
 
   for (u32 i = beginningOfData; i < beginningOfData + lengthOfData; i++) {
     if (outIdx == outMaxItems) {
-      arrResizeFloat(&out, outMaxItems * 2);
+      arrResizeFloat(&out, sizeof(float) * outMaxItems * 2);
       outMaxItems *= 2;
     }
 
@@ -125,7 +128,7 @@ static GLuint* getIndices(const Model* self, const json* accessor) {
     case 5125:
       for (u32 i = beginningOfData; i < byteOffset + accByteOffset + count * 4; i++) {
         if (outIdx == outMaxItems) {
-          arrResizeUint(&out, outMaxItems * 2);
+          arrResizeUint(&out, sizeof(uint) * outMaxItems * 2);
           outMaxItems *= 2;
         }
 
@@ -140,7 +143,7 @@ static GLuint* getIndices(const Model* self, const json* accessor) {
     case 5123:
       for (u32 i = beginningOfData; i < byteOffset + accByteOffset + count * 2; i++) {
         if (outIdx == outMaxItems) {
-          arrResizeUint(&out, outMaxItems * 2);
+          arrResizeUint(&out, sizeof(uint) * outMaxItems * 2);
           outMaxItems *= 2;
         }
 
@@ -155,7 +158,7 @@ static GLuint* getIndices(const Model* self, const json* accessor) {
     case 5122:
       for (u32 i = beginningOfData; i < byteOffset + accByteOffset + count * 2; i++) {
         if (outIdx == outMaxItems) {
-          arrResizeUint(&out, outMaxItems * 2);
+          arrResizeUint(&out, sizeof(uint) * outMaxItems * 2);
           outMaxItems *= 2;
         }
 
@@ -178,7 +181,7 @@ static vec2s* getFloatsVec2(const float* vecs, u32 vecsCount) {
 
   for (int i = 0; i < vecsCount; i++) {
     if (outIdx == outMaxItems) {
-      arrResizeVec2s(&out, outMaxItems * 2);
+      arrResizeVec2s(&out, sizeof(vec2s) * outMaxItems * 2);
       outMaxItems *= 2;
     }
 
@@ -194,7 +197,7 @@ static vec3s* getFloatsVec3(const float* vecs, u32 vecsCount) {
 
   for (int i = 0; i < vecsCount; i += 3) {
     if (outIdx == outMaxItems) {
-      arrResizeVec3s(&out, outMaxItems * 2);
+      arrResizeVec3s(&out, sizeof(vec3s) * outMaxItems * 2);
       outMaxItems *= 2;
     }
 
@@ -209,7 +212,7 @@ static vec4s* getFloatsVec4(const float* vecs, u32 vecsCount) {
 
   for (int i = 0; i < vecsCount; i++) {
     if (outIdx == outMaxItems) {
-      arrResizeVec4s(&out, outMaxItems * 2);
+      arrResizeVec4s(&out, sizeof(vec4s) * outMaxItems * 2);
       outMaxItems *= 2;
     }
 
@@ -218,17 +221,15 @@ static vec4s* getFloatsVec4(const float* vecs, u32 vecsCount) {
   }
 }
 
-static void assembleVertices(
-    vec3s* positions,
-    vec3s* normals,
-    vec2s* texUVs,
-    u32 idx,
-    Object* out, u32 outIdx, u32 outIdxLimit
-) {
-  for (int i = 0; i <= idx; i++) {
-    if (outIdx > outIdxLimit) {
-      printf("assembleVertice: out index is out of range");
-      exit(EXIT_FAILURE);
+static Object* assembleVertices(vec3s* positions, u32 positionsSize, vec3s* normals, vec2s* texUVs) {
+  u32 outMaxItems = DEFAULT_BUFFER_ITEMS;
+  u32 outIdx = 0;
+  Object* out = malloc(sizeof(Object) * outMaxItems);
+
+  for (int i = 0; i <= positionsSize / sizeof(positions[0]); i++) {
+    if (outIdx == outMaxItems) {
+      arrResizeObject(&out, sizeof(Object) * outMaxItems * 2);
+      outMaxItems *= 2;
     }
 
     const float vertices[10] = {
@@ -245,6 +246,90 @@ static void assembleVertices(
 
     out[outIdx++] = vertex;
   }
+
+  return out;
+}
+
+static Texture* getTextures(Model* self) {
+  static uint unit = 0;
+
+  u32 outMaxItems = DEFAULT_BUFFER_ITEMS;
+  u32 outIdx = 0;
+  Texture* out = malloc(sizeof(Texture) * outMaxItems);
+
+  json* images;
+  if (!json_object_object_get_ex(self->json, "images", &images))
+    printf("Can't get \"images\" from json\n");
+
+  for (u32 i = 0; i < json_object_array_length(images); i++) {
+    json* image = json_object_array_get_idx(images, i);
+    json* uri;
+
+    if (!json_object_object_get_ex(image, "uri", &uri))
+      printf("Can't get \"uri\" from image\n");
+
+    const char* uriStr = json_object_get_string(uri);
+
+    // Folder + file
+    rsize_t size = strlen(self->dirPath) + strlen(uriStr) + 1;
+    char* path = malloc(size);
+    concat(self->dirPath, uriStr, path, size);
+
+    bool skip = false;
+    for (u32 j = 0; j < self->ltnSize / sizeof(self->loadedTexNames[0]); j++) {
+      if (strcmp(self->loadedTexNames[j], uriStr)) {
+        /* if (outIdx == outMaxItems) { */
+        /*   arrResizeTexture(&out, sizeof(Texture) * outMaxItems * 2); */
+        /*   outMaxItems *= 2; */
+        /* } */
+        /* out[outIdx++] = self->loadedTexs[j]; */
+        skip = true;
+        break;
+      }
+    }
+
+    if (!skip) {
+      // if diffuse texture
+      if (strstr(uriStr, "baseColor")) {
+        // add texture
+        Texture tex = textureCreate(path, "diffuse", unit);
+        if (outIdx == outMaxItems) {
+          arrResizeTexture(&out, sizeof(Texture) * outMaxItems * 2);
+          outMaxItems *= 2;
+        }
+        out[outIdx++] = tex;
+        cacheTexture(self, tex, (char*)uriStr);
+
+        // if specular texture
+      } else if (strstr(uriStr, "metallicRoughness")) {
+        Texture tex = textureCreate(path, "specular", unit++);
+        if (outIdx == outMaxItems) {
+          arrResizeTexture(&out, outMaxItems * 2);
+          outMaxItems *= 2;
+        }
+        out[outIdx++] = tex;
+        cacheTexture(self, tex, (char*)uriStr);
+      }
+    }
+
+    free(path);
+  }
+
+  return out;
+}
+
+static void cacheTexture(Model* self, Texture tex, char* texName) {
+  if (self->ltIdx == self->ltSize / sizeof(self->loadedTexs[0])) {
+    arrResizeTexture(&self->loadedTexs, self->ltSize * 2);
+    self->ltSize *= 2;
+  }
+  self->loadedTexs[self->ltIdx++] = tex;
+
+  if (self->ltnIdx == self->ltnSize / sizeof(self->loadedTexNames[0])) {
+    arrResizeCharPtr(&self->loadedTexNames, self->ltnSize * 2);
+    self->ltnSize *= 2;
+  }
+  self->loadedTexNames[self->ltnIdx++] = (char*)texName;
 }
 
 Model modelCreate(const char* modelDirectory) {
@@ -263,13 +348,22 @@ Model modelCreate(const char* modelDirectory) {
   model.json = json_tokener_parse(buffer);
   model.dirPath = modelDirectory;
   model.data = getData(&model);
+  model.ltnSize = sizeof(char) * TEXTURE_NAME_LENGTH * DEFAULT_TEXTURE_NAMES;
+  model.loadedTexNames = malloc(model.ltnSize);
+  model.ltnIdx = 0;
+  model.ltSize = sizeof(Texture) * DEFAULT_BUFFER_ITEMS;
+  model.loadedTexs = malloc(model.ltSize);
+  model.ltIdx = 0,
 
   free(gltfPath);
   free(buffer);
+
   return model;
 }
 
 void modelDelete(Model* self) {
   free(self->data);
+  free(self->loadedTexNames);
+  free(self->loadedTexs);
 }
 

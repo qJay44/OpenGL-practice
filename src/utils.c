@@ -116,6 +116,39 @@ void arrResizeVec4s(vec4s** arr, u32 newSize) {
   }
 }
 
+void arrResizeObject(Object** arr, u32 newSize) {
+  Object* newArr = realloc(*arr, newSize);
+
+  if (newArr)
+    *arr = newArr;
+  else {
+    printf("arrayExpand realloc fail\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void arrResizeTexture(Texture** arr, u32 newSize) {
+  Texture* newArr = realloc(*arr, newSize);
+
+  if (newArr)
+    *arr = newArr;
+  else {
+    printf("arrayExpand realloc fail\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void arrResizeCharPtr(char*** arr, u32 newSize) {
+  char** newArr = realloc(*arr, newSize);
+
+  if (newArr)
+    *arr = newArr;
+  else {
+    printf("arrayExpand realloc fail\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
 void concat(const char* s1, const char* s2, char* out, rsize_t outSize) {
   strcpy_s(out, outSize, s1);
   strcat_s(out, outSize, s2);

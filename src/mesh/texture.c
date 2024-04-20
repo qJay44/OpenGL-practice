@@ -1,6 +1,6 @@
 #include "texture.h"
 
-Texture textureCreate2D(const char* path, GLenum slot) {
+Texture textureCreate(const char* path, const char* type, GLenum slot) {
   int imgWidth, imgHeight, imgColorChannels;
   stbi_set_flip_vertically_on_load(true);
   unsigned char* imgBytes = stbi_load(path, &imgWidth, &imgHeight, &imgColorChannels, 0);
@@ -36,7 +36,7 @@ Texture textureCreate2D(const char* path, GLenum slot) {
   Texture tex = {
     .id = textureId,
     .slot = slot,
-    .type = GL_TEXTURE_2D
+    .type = type
   };
 
   return tex;
@@ -44,7 +44,7 @@ Texture textureCreate2D(const char* path, GLenum slot) {
 
 void textureBind(const Texture* self) {
   glActiveTexture(self->slot);
-  glBindTexture(self->type, self->id);
+  glBindTexture(GL_TEXTURE_2D, self->id);
 }
 
 void textureUnbind(GLenum texType) {
