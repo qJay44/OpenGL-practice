@@ -2,9 +2,11 @@
 cls
 
 Rem Build
-if not exist Build\Debug mkdir Build\Debug
+if not exist Build\Debug mkdir Build\Debug\Run
 cd Build\Debug
-cmake.exe -S ..\..\ -B . -G"MinGW Makefiles" -D CMAKE_EXPORT_COMPILE_COMMANDS=ON -D CMAKE_BUILD_TYPE=Debug
+cmake.exe -S ..\..\ -B . -G"MinGW Makefiles" -D CMAKE_BUILD_TYPE=Debug
 C:\Users\gerku\Documents\mingw64\bin\mingw32-make.exe
-cd ../../
+cd Run
+echo n | copy /-y "C:\Users\gerku\Documents\json-c\install\bin\libjson-c.dll" .
+cd ..\..\..\
 

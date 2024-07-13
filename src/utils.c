@@ -5,42 +5,34 @@
 
 char* readFile(const char* path, bool printContent) {
   FILE* fptr;
-  u32 maxItems = DEFAULT_BUFFER_ITEMS;
-  char* buffer = calloc(maxItems, sizeof(char) * maxItems);
+  u32 itemsCount = 0xff;
+  char* buffer = malloc(sizeof(char) * itemsCount);
 
   fopen_s(&fptr, path, "r");
 
   if (fptr) {
     u32 i = 0;
 
+    while (!feof(fptr)) {
+      if (i == itemsCount) {
+        size_t sz = sizeof(char) * itemsCount;
+        arrResizeChar(&buffer, sz, &sz);
+        itemsCount = sz / sizeof(char);
+      }
+      buffer[i++] = fgetc(fptr);
+    }
+    // Crop at the last element
+    size_t sz = sizeof(char) * i;
+    arrResizeChar(&buffer, sz, &sz);
+
     if (printContent) {
       printf("\n====== File content (%s) ======\n", path);
-      while (!feof(fptr)) {
-        if (i == maxItems) {
-          maxItems *= 2;
-          arrResizeChar(&buffer, sizeof(char) * maxItems);
-        }
-
-        char ch = fgetc(fptr);
-        buffer[i++] = ch;
-        printf("%c", ch);
-      }
-
-      // Print lower border
-      printf("\n=============================");
+      printf("%s\n", buffer);
+      printf("=============================");
       int pathLen = strlen(path);
       while (pathLen--) printf("=");
       printf("\n\n");
-
-    } else
-      while (!feof(fptr)) {
-        if (i == maxItems) {
-          maxItems *= 2;
-          arrResizeChar(&buffer, sizeof(char) * maxItems);
-        }
-        buffer[i++] = fgetc(fptr);
-      }
-    arrResizeChar(&buffer, sizeof(char) * i);
+    }
   } else
     printf("File can't be opened: %s\n", path);
 
@@ -48,105 +40,185 @@ char* readFile(const char* path, bool printContent) {
   return buffer;
 }
 
-void arrResizeChar(char** arr, u32 newSize) {
-  char* newArr = realloc(*arr, newSize);
+byte* readFileBytes(const char* path) {
+  FILE* fptr;
+  u32 itemsCount = 0xff;
+  byte* buffer = malloc(sizeof(byte) * itemsCount);
 
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
-}
+  fopen_s(&fptr, path, "rb");
 
-void arrResizeFloat(float** arr, u32 newSize) {
-  float* newArr = realloc(*arr, newSize);
+  if (fptr) {
+    u32 i = 0;
 
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
-}
+    while (!feof(fptr)) {
+      if (i == itemsCount) {
+        size_t sz = sizeof(byte) * itemsCount;
+        arrResizeByte(&buffer, sz, &sz);
+        itemsCount = sz / sizeof(byte);
+      }
+      buffer[i++] = fgetc(fptr);
+    }
 
-void arrResizeUint(uint** arr, u32 newSize) {
-  uint* newArr = realloc(*arr, newSize);
+    // Crop at the last element
+    size_t sz = sizeof(byte) * i;
+    arrResizeByte(&buffer, sz, &sz);
+  } else
+    printf("File can't be opened: %s\n", path);
 
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
-}
-
-void arrResizeVec2s(vec2s** arr, u32 newSize) {
-  vec2s* newArr = realloc(*arr, newSize);
-
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
+  fclose(fptr);
+  return buffer;
 
 }
 
-void arrResizeVec3s(vec3s** arr, u32 newSize) {
-  vec3s* newArr = realloc(*arr, newSize);
+/**
+ * C++ version 0.4 char* style "itoa":
+ * Written by Lukás Chmela
+ * Released under GPLv3.
+ */
+void int2str(int value, char* result, int base) {
+    // check that the base if valid
+    if (base < 2 || base > 36) { *result = '\0'; }
 
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
+    char* ptr = result, *ptr1 = result, tmp_char;
+    int tmp_value;
 
+    do {
+        tmp_value = value;
+        value /= base;
+        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz" [35 + (tmp_value - value * base)];
+    } while ( value );
+
+    // Apply negative sign
+    if (tmp_value < 0) *ptr++ = '-';
+    *ptr-- = '\0';
+
+    // Reverse the string
+    while(ptr1 < ptr) {
+        tmp_char = *ptr;
+        *ptr--= *ptr1;
+        *ptr1++ = tmp_char;
+    }
 }
 
-void arrResizeVec4s(vec4s** arr, u32 newSize) {
-  vec4s* newArr = realloc(*arr, newSize);
+void arrResizeFloat(float** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  float* newArr = malloc(*outNewSize);
 
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
+  for (int i = 0; i < oldSize / sizeof(float); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
 }
 
-void arrResizeObject(Object** arr, u32 newSize) {
-  Object* newArr = realloc(*arr, newSize);
+void arrResizeUint(u32** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  u32* newArr = malloc(*outNewSize);
 
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
+  for (int i = 0; i < oldSize / sizeof(u32); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
 }
 
-void arrResizeTexture(Texture** arr, u32 newSize) {
-  Texture* newArr = realloc(*arr, newSize);
+void arrResizeVec2s(vec2s** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  vec2s* newArr = malloc(*outNewSize);
 
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
+  for (int i = 0; i < oldSize / sizeof(vec2s); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
 }
 
-void arrResizeCharPtr(char*** arr, u32 newSize) {
-  char** newArr = realloc(*arr, newSize);
+void arrResizeVec3s(vec3s** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  vec3s* newArr = malloc(*outNewSize);
 
-  if (newArr)
-    *arr = newArr;
-  else {
-    printf("arrayExpand realloc fail\n");
-    exit(EXIT_FAILURE);
-  }
+  for (int i = 0; i < oldSize / sizeof(vec3s); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
+}
+
+void arrResizeVec4s(vec4s** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  vec4s* newArr = malloc(*outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(vec4s); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
+}
+
+void arrResizeMat4s(mat4s** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  mat4s* newArr = malloc(*outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(mat4s); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
+}
+
+void arrResizeObject(Object** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  Object* newArr = malloc(*outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(Object); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
+}
+
+void arrResizeTexture(Texture** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  Texture* newArr = malloc(*outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(Texture); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
+}
+
+void arrResizeChar(char** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  char* newArr = malloc(*outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(char); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
+}
+
+void arrResizeCharPtr(char*** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  char** newArr = malloc(sizeof(char) * *outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(char); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
+}
+
+void arrResizeByte(byte** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  byte* newArr = malloc(sizeof(byte) * *outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(byte); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
 }
 
 void concat(const char* s1, const char* s2, char* out, rsize_t outSize) {

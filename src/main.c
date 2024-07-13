@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <windows.h>
 
 #include "mesh/shader.h"
 #include "mesh/object.h"
@@ -13,13 +14,14 @@ void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 int main() {
+  // Change cwd where "src" directory located
+  SetCurrentDirectory("../../../");
+
   // GLFW init
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-  Model model = modelCreate("../../src/mesh/models/sword/");
 
   // Window init
   GLFWwindow* window = glfwCreateWindow(1200, 720, "LearnOpenGL", NULL, NULL);
@@ -42,80 +44,12 @@ int main() {
   glViewport(0, 0, 1200, 720);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
-  Texture planksTex = textureCreate("../../src/textures/planks.png", GL_TEXTURE0);
-  Texture planksSpecTex = textureCreate("../../src/textures/planksSpec.png", GL_TEXTURE1);
-  vec4s lightColor = {1.f, 1.f, 1.f, 1.f};
-
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
-
-  //========== Illumination cube ==========//
-
-  // z+ towards us, z- away from us
-  GLfloat lightVertices[] = {
-    // coordinates           // colors          // texture    // normals
-    -0.1f, -0.1f,  0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
-    -0.1f, -0.1f, -0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
-     0.1f, -0.1f, -0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
-     0.1f, -0.1f,  0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
-    -0.1f,  0.1f,  0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
-    -0.1f,  0.1f, -0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
-     0.1f,  0.1f, -0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
-     0.1f,  0.1f,  0.1f,     1.f, 1.f, 1.f,     0.f, 0.f,     0.f, 0.f, 0.f,
-  };
-
-  // Triangles indices of vertices
-  GLuint lightIndices[] = {
-    0, 1, 2,
-    0, 2, 3,
-    0, 4, 7,
-    0, 7, 3,
-    3, 7, 6,
-    3, 6, 2,
-    2, 6, 5,
-    2, 5, 1,
-    1, 5, 4,
-    1, 4, 0,
-    4, 5, 6,
-    4, 6, 7
-  };
-
-  GLint lightShader = shaderCreate("../../src/shaders/light.vert", "../../src/shaders/light.frag");
-  Object light = objectCreate(lightVertices, sizeof(lightVertices), lightIndices, sizeof(lightIndices), &lightShader);
-  vec3s lightPos = {0.5f, 0.5f, 0.5f};
-
-  objectTranslate(&light, lightPos);
-
-  //====== Main object ====================//
-
-  GLfloat mainVertices[] = {
-    -1.f, 0.f,  1.f,     0.f, 0.f, 0.f,     0.f, 0.f,     0.f, 1.f, 0.f,
-    -1.f, 0.f, -1.f,     0.f, 0.f, 0.f,     0.f, 1.f,     0.f, 1.f, 0.f,
-     1.f, 0.f, -1.f,     0.f, 0.f, 0.f,     1.f, 1.f,     0.f, 1.f, 0.f,
-     1.f, 0.f,  1.f,     0.f, 0.f, 0.f,     1.f, 0.f,     0.f, 1.f, 0.f,
-  };
-
-  // Triangles indices of vertices
-  GLuint mainIndices[] = {
-    0, 1, 2,
-    0, 2, 3
-  };
-
-  GLint mainShader = shaderCreate("../../src/shaders/main.vert", "../../src/shaders/main.frag");
-  Object main = objectCreate(mainVertices, sizeof(mainVertices), mainIndices, sizeof(mainIndices), &mainShader);
-  objectAddTexture(&main, &planksTex);
-  objectAddTexture(&main, &planksSpecTex);
 
   //===== Uniforms ==============================//
 
-  objectSetMatrixUniform(&light, "matModel");
-
-  objectSetMatrixUniform(&main, "matModel");
-  objectSetVec4Unifrom(&main, "lightColor", lightColor);
-  objectSetVec3Unifrom(&main, "lightPos", lightPos);
-  objectSetTextureUnifrom(&main, "tex0", 0);
-  objectSetTextureUnifrom(&main, "tex1", 1);
-
-  //=============================================//
+  GLint mainShader = shaderCreate("src/shaders/main.vert", "src/shaders/main.frag");
+  Model model = modelCreate("src/mesh/models/sword/", &mainShader);
 
   glEnable(GL_DEPTH_TEST);
 
@@ -141,23 +75,14 @@ int main() {
 
     cameraMove(&camera, mouseX, mouseY, width, height);
     cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
-    objectSetVec3Unifrom(&main, "camPos", camera.position);
+    /* objectSetVec3Unifrom(&main, "camPos", camera.position); */
 
-    // Working with pyramid shader
-    objectSetCameraMatrixUnifrom(&main, (const GLfloat*)camera.mat.raw, "matCam");
-    objectDraw(&main);
-
-    // Working with light shader
-    objectSetCameraMatrixUnifrom(&light, (const GLfloat*)camera.mat.raw, "matCam");
-    objectDraw(&light);
+    modelDraw(&model, &camera);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
-  objectDelete(&main);
-  objectDelete(&light);
-  textureDelete(&planksTex, 1);
   modelDelete(&model);
 
   glfwTerminate();

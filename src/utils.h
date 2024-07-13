@@ -4,20 +4,21 @@
 #include "cglm/types-struct.h"
 #include "mesh/object.h"
 
-#define DEFAULT_BUFFER_ITEMS 0xff
+[[nodiscard]] char* readFile(const char* path, bool printContent);
+[[nodiscard]] byte* readFileBytes(const char* path);
+void int2str(int value, char* result, int base);
 
-[[nodiscard]]
-char* readFile(const char* path, bool printContent);
-
-void arrResizeChar(char** arr, u32 newSize);
-void arrResizeFloat(float** arr, u32 newSize);
-void arrResizeUint(uint** arr, u32 newSize);
-void arrResizeVec2s(vec2s** arr, u32 newSize);
-void arrResizeVec3s(vec3s** arr, u32 newSize);
-void arrResizeVec4s(vec4s** arr, u32 newSize);
-void arrResizeObject(Object** arr, u32 newSize);
-void arrResizeTexture(Texture** arr, u32 newSize);
-void arrResizeCharPtr(char*** arr, u32 newSize);
+void arrResizeFloat(float** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeUint(u32** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeVec2s(vec2s** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeVec3s(vec3s** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeVec4s(vec4s** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeMat4s(mat4s** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeObject(Object** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeTexture(Texture** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeChar(char** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeCharPtr(char*** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeByte(byte** arr, size_t oldSize, size_t* outNewSize);
 void concat(const char* s1, const char* s2, char* out, rsize_t outSize);
 
 #endif

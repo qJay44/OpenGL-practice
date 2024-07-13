@@ -1,7 +1,10 @@
+#include <stdio.h>
+#include <string.h>
+
 #include "object.h"
 #include "cglm/struct/affine-pre.h"
 #include "cglm/struct/mat4.h"
-#include <stdio.h>
+#include "texture.h"
 
 Object objectCreate(const float* vertices, int vertSize, const GLuint* indices, int indSize, const GLint* shader) {
   static const int floatSize = sizeof(float);
@@ -88,11 +91,53 @@ void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const 
   glUniformMatrix4fv(loc, 1, GL_FALSE, mat);
 }
 
-void objectDraw(const Object* self) {
-  for (int i = 0; i < self->texturesAmount; i++)
-    textureBind(self->textures[i]);
-
+void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, vec4s rotation, vec3s scale) {
+  glUseProgram(*self->shaderProgram);
   glBindVertexArray(self->vao.id);
+
+  u32 numDiffuse = 0;
+  u32 numSpecular = 0;
+
+  for (int i = 0; i < self->texturesAmount; i++) {
+    const char* texType = self->textures[i]->type;
+    char* numStr;
+    u8 uniformStrLength;
+
+    if (strcmp(texType, "diffuse")) {
+      uniformStrLength = numDiffuse + 7;
+      int2str(numDiffuse++, numStr, 10);
+
+    } else if (strcmp(texType, "specular")) {
+      uniformStrLength = numSpecular + 8;
+      int2str(numSpecular++, numStr, 10);
+    }
+
+    char uniform[uniformStrLength];
+    concat(texType, numStr, uniform, uniformStrLength * sizeof(char));
+
+    textureUnit(self->shaderProgram, uniform, i);
+    textureBind(self->textures[i]);
+  }
+
+  objectSetVec3Unifrom(self, "camPos", camera->position);
+  objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "matCam");
+
+  mat4s trans = GLMS_MAT4_IDENTITY_INIT;
+  mat4s rot = GLMS_MAT4_IDENTITY_INIT;
+  mat4s sca = GLMS_MAT4_IDENTITY_INIT;
+
+  trans = glms_translate(trans, translation);
+  rot.m00 *= rotation.x;
+  rot.m11 *= rotation.y;
+  rot.m22 *= rotation.z;
+  rot.m33 *= rotation.w;
+  glm_scale(sca.raw, scale.raw);
+
+  glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "translation"), 1, GL_FALSE, (const GLfloat*)trans.raw);
+  glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "rotation"), 1, GL_FALSE, (const GLfloat*)rot.raw);
+  glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "scale"), 1, GL_FALSE, (const GLfloat*)sca.raw);
+  glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "model"), 1, GL_FALSE, (const GLfloat*)matrix.raw);
+
   glDrawElements(GL_TRIANGLES, self->indCount, GL_UNSIGNED_INT, 0);
 }
 

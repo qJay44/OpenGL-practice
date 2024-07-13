@@ -51,6 +51,12 @@ void textureUnbind(GLenum texType) {
   glBindTexture(texType, 0);
 }
 
+void textureUnit(const GLint* shader, const char* uniform, GLuint unit) {
+  GLuint texUni = glGetUniformLocation(*shader, uniform);
+  glUseProgram(*shader);
+  glUniform1i(texUni, unit);
+}
+
 void textureDelete(Texture* self, GLsizei num) {
   glDeleteTextures(num, &self->id);
 }

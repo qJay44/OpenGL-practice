@@ -1,6 +1,7 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#include "../camera.h"
 #include "cglm/types-struct.h"
 #include "vao.h"
 #include "vbo.h"
@@ -35,7 +36,7 @@ void objectSetVec3Unifrom(const Object* self, const char* name, vec3s v);
 void objectSetVec4Unifrom(const Object* self, const char* name, vec4s v);
 void objectSetTextureUnifrom(const Object* self, const char* name, GLuint slot);
 void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name);
-void objectDraw(const Object* self);
+void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, vec4s rotation, vec3s scale);
 void objectDelete(Object* self);
 
 #endif
