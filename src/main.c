@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <windows.h>
 
+#include "cglm/struct/mat4.h"
 #include "mesh/shader.h"
-#include "mesh/object.h"
 #include "mesh/model.h"
 #include "inputs.h"
 #include "camera.h"
@@ -75,9 +75,8 @@ int main() {
 
     cameraMove(&camera, mouseX, mouseY, width, height);
     cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
-    /* objectSetVec3Unifrom(&main, "camPos", camera.position); */
 
-    modelDraw(&model, &camera);
+    //modelDraw(&model, &camera);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -86,6 +85,8 @@ int main() {
   modelDelete(&model);
 
   glfwTerminate();
+  printf("Done\n");
+
   return 0;
 }
 

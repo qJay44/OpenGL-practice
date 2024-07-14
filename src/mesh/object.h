@@ -8,13 +8,13 @@
 #include "ebo.h"
 #include "texture.h"
 
+#define OBJECT_MAX_TEXTURES 8
+
 typedef struct {
-  const float* vertPtr;
-  int vertSize;
-  int vertCount;
-  const GLuint* indPtr;
-  int indSize;
-  int indCount;
+  float* vertices;
+  size_t vertSize;
+  GLuint* indices;
+  size_t indSize;
 
   const GLint* shaderProgram;
   struct VAO vao;
@@ -22,14 +22,14 @@ typedef struct {
   struct EBO ebo;
   mat4s mat;
 
-  const Texture* textures[8];
-  int texturesAmount;
+  Texture* textures[OBJECT_MAX_TEXTURES];
+  u32 texsCount;
 } Object;
 
 [[nodiscard]]
-Object objectCreate(const float* vertices, int vertSize, const GLuint* indices, int indSize, const GLint* shader);
+Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, const GLint* shader);
 
-void objectAddTexture(Object* self, const Texture* tex);
+void objectAddTexture(Object* self, Texture* tex);
 void objectTranslate(Object* self, vec3s v);
 void objectSetMatrixUniform(const Object* self, const char* name);
 void objectSetVec3Unifrom(const Object* self, const char* name, vec3s v);

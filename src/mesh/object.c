@@ -6,35 +6,31 @@
 #include "cglm/struct/mat4.h"
 #include "texture.h"
 
-Object objectCreate(const float* vertices, int vertSize, const GLuint* indices, int indSize, const GLint* shader) {
-  static const int floatSize = sizeof(float);
-  static const int GLuintSize = sizeof(GLuint);
-
+Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, const GLint* shader) {
   Object obj = {
-    .vertPtr = vertices,
+    .vertices = malloc(vertSize),
     .vertSize = vertSize,
-    .vertCount = vertSize / floatSize,
-    .indPtr = indices,
+    .indices = malloc(indSize),
     .indSize = indSize,
-    .indCount = indSize / GLuintSize,
     .mat = GLMS_MAT4_IDENTITY_INIT,
     .vao = vaoCreate(1),
     .vbo = vboCreate(1),
     .ebo = eboCreate(1),
-    .texturesAmount = 0,
+    .texsCount = 0,
+    .shaderProgram = shader
   };
-
-  obj.shaderProgram = shader;
+  memcpy((void*)obj.vertices, (void*)vertices, vertSize);
+  memcpy((void*)obj.indices, (void*)indices, indSize);
 
   // Bind
   vaoBind(&obj.vao);
-  vboBind(&obj.vbo, obj.vertPtr, obj.vertSize);
-  eboBind(&obj.ebo, obj.indPtr, obj.indSize);
+  vboBind(&obj.vbo, obj.vertices, obj.vertSize);
+  eboBind(&obj.ebo, obj.indices, obj.indSize);
 
   // Link attributes //
 
-  static const unsigned long long typeSize = sizeof(GLfloat);
-  static const int stride = 11 * typeSize;
+  size_t typeSize = sizeof(GLfloat);
+  size_t stride = 11 * typeSize;
 
   vaoLinkAttrib(0, 3, GL_FLOAT, stride, (void*)(0 * typeSize));
   vaoLinkAttrib(1, 3, GL_FLOAT, stride, (void*)(3 * typeSize));
@@ -50,11 +46,11 @@ Object objectCreate(const float* vertices, int vertSize, const GLuint* indices, 
   return obj;
 }
 
-void objectAddTexture(Object* self, const Texture* tex) {
-  if (self->texturesAmount < 8)
-    self->textures[self->texturesAmount++] = tex;
+void objectAddTexture(Object* self, Texture* tex) {
+  if (self->texsCount < OBJECT_MAX_TEXTURES)
+    self->textures[self->texsCount++] = tex;
   else
-    printf("Warning: trying to set a texture to the object when its reached maximum amount (8)\n");
+    printf("Warning: trying to add a texture to the object when its reached maximum amount (%d)\n", OBJECT_MAX_TEXTURES);
 }
 
 void objectTranslate(Object* self, vec3s v) {
@@ -98,9 +94,9 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
   u32 numDiffuse = 0;
   u32 numSpecular = 0;
 
-  for (int i = 0; i < self->texturesAmount; i++) {
+  for (int i = 0; i < self->texsCount; i++) {
     const char* texType = self->textures[i]->type;
-    char* numStr;
+    char numStr[256];
     u8 uniformStrLength;
 
     if (strcmp(texType, "diffuse")) {
@@ -112,7 +108,7 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
       int2str(numSpecular++, numStr, 10);
     }
 
-    char uniform[uniformStrLength];
+    char uniform[uniformStrLength + 1];
     concat(texType, numStr, uniform, uniformStrLength * sizeof(char));
 
     textureUnit(self->shaderProgram, uniform, i);
@@ -138,13 +134,22 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
   glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "scale"), 1, GL_FALSE, (const GLfloat*)sca.raw);
   glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "model"), 1, GL_FALSE, (const GLfloat*)matrix.raw);
 
-  glDrawElements(GL_TRIANGLES, self->indCount, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, self->indSize / sizeof(self->indices[0]), GL_UNSIGNED_INT, 0);
 }
 
 void objectDelete(Object* self) {
   vaoDelete(&self->vao);
   vboDelete(&self->vbo);
   eboDelete(&self->ebo);
+
+  free(self->vertices);
+  free(self->indices);
+
+  for (int i = 0; i < self->texsCount; i++) {
+    textureDelete(self->textures[i], 1);
+    free(self->textures[i]);
+  }
+
   glDeleteProgram(*self->shaderProgram);
 }
 

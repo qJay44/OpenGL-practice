@@ -51,10 +51,10 @@ typedef struct {
 [[nodiscard]] static vec2s* getFloatsVec2(const float* vecs, u32 vecsCount);
 [[nodiscard]] static vec3s* getFloatsVec3(const float* vecs, u32 vecsCount);
 [[nodiscard]] static vec4s* getFloatsVec4(const float* vecs, u32 vecsCount);
-[[nodiscard]] static Texture* getTextures(Model* self);
+[[nodiscard]] static Texture* getTextures(Model* self, u32* outCount);
 [[nodiscard]] static float* assembleVertices(vec3s* positions, u32 positionsCount, vec3s* normals, vec2s* texUVs);
 
-static void cacheTexture(Model* self, Texture tex, char* texName);
+static void cacheTexture(Model* self, Texture tex, const char* texName);
 static void loadMesh(Model* self, u32 idxMesh);
 static void traverseNode(Model* self, u32 nextNode, mat4 matrix);
 

@@ -4,7 +4,6 @@
 
 #include "model.h"
 #include "cglm/struct/affine-pre.h"
-#include "cglm/struct/mat4.h"
 #include "cglm/types.h"
 #include "object.h"
 
@@ -24,13 +23,11 @@ byte* getData(const Model* self) {
   const char* uriStr = json_object_get_string(uri);
 
   // Folder + file
-  rsize_t size = strlen(self->dirPath) + strlen(uriStr) + 1;
-  char* dataPath = malloc(size);
-  concat(self->dirPath, uriStr, dataPath, size);
+  u32 pathLength = strlen(self->dirPath) + strlen(uriStr) + 1;
+  char path[pathLength];
+  concat(self->dirPath, uriStr, path, sizeof(char) * pathLength);
 
-  // Read data
-  free(dataPath);
-  return readFileBytes(dataPath);
+  return readFileBytes(path);
 }
 
 float* getFloats(const Model* self, const json* accessor, u32* outCount) {
@@ -74,9 +71,8 @@ float* getFloats(const Model* self, const json* accessor, u32* outCount) {
   u32 beginningOfData = byteOffset + accByteOffset;
   u32 lengthOfData = count * 4 * numPerVert;
 
-  u32 outItemsCount = lengthOfData;
   u32 outIdx = 0;
-  float* out = malloc(sizeof(float) * outItemsCount);
+  float* out = malloc(sizeof(float) * lengthOfData);
 
   for (u32 i = beginningOfData; i < beginningOfData + lengthOfData; i++) {
     u32 ii = i << 2;
@@ -86,7 +82,7 @@ float* getFloats(const Model* self, const json* accessor, u32* outCount) {
     out[outIdx++] = value;
   }
 
-  *outCount = outItemsCount;
+  *outCount = lengthOfData;
   return out;
 }
 
@@ -121,7 +117,6 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
   u32 beginningOfData = byteOffset + accByteOffset;
 
   u32 outItemsCount;
-  u32 outIdx = 0;
   GLuint* out;
 
   switch (componentType) {
@@ -134,7 +129,7 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
         byte bytes[4] = {self->data[ii], self->data[ii + 1], self->data[ii + 2], self->data[ii + 3]};
         u32 value;
         memcpy(&value, bytes, sizeof(u32));
-        out[outIdx++] = (GLuint)value;
+        out[i] = (GLuint)value;
       }
       break;
     // unsigned short
@@ -146,7 +141,7 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
         byte bytes[2] = {self->data[ii], self->data[ii + 1]};
         unsigned short value;
         memcpy(&value, bytes, sizeof(unsigned short));
-        out[outIdx++] = (GLuint)value;
+        out[i] = (GLuint)value;
       }
       break;
     // short
@@ -158,7 +153,7 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
         byte bytes[2] = {self->data[ii], self->data[ii + 1]};
         short value;
         memcpy(&value, bytes, sizeof(short));
-        out[outIdx++] = (GLuint)value;
+        out[i] = (GLuint)value;
       }
       break;
     default:
@@ -168,12 +163,12 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
   }
 
   *outCount = outItemsCount;
+  printf("111\n");
   return out;
 }
 
 vec2s* getFloatsVec2(const float* vecs, u32 vecsCount) {
-  u32 outItemsCount = vecsCount;
-  vec2s* out = malloc(sizeof(vec2s) * outItemsCount);
+  vec2s* out = malloc(sizeof(vec2s) * vecsCount);
 
   for (int i = 0; i < vecsCount; i++) {
     u32 ii = i << 1;
@@ -184,8 +179,7 @@ vec2s* getFloatsVec2(const float* vecs, u32 vecsCount) {
 }
 
 vec3s* getFloatsVec3(const float* vecs, u32 vecsCount) {
-  u32 outItemsCount = vecsCount;
-  vec3s* out = malloc(sizeof(vec3s) * outItemsCount);
+  vec3s* out = malloc(sizeof(vec3s) * vecsCount);
 
   for (int i = 0; i < vecsCount; i++) {
     u32 ii = i * 3;
@@ -196,8 +190,7 @@ vec3s* getFloatsVec3(const float* vecs, u32 vecsCount) {
 }
 
 vec4s* getFloatsVec4(const float* vecs, u32 vecsCount) {
-  u32 outItemsCount = vecsCount;
-  vec4s* out = malloc(sizeof(vec4s) * outItemsCount);
+  vec4s* out = malloc(sizeof(vec4s) * vecsCount);
 
   for (int i = 0; i < vecsCount; i++) {
     u32 ii = i << 2;
@@ -207,7 +200,7 @@ vec4s* getFloatsVec4(const float* vecs, u32 vecsCount) {
   return out;
 }
 
-Texture* getTextures(Model* self) {
+Texture* getTextures(Model* self, u32* outCount) {
   static u32 unit = 0;
 
   u32 outItemsCount = 1;
@@ -228,9 +221,9 @@ Texture* getTextures(Model* self) {
     const char* uriStr = json_object_get_string(uri);
 
     // Folder + file
-    rsize_t size = strlen(self->dirPath) + strlen(uriStr) + 1;
-    char* path = malloc(size);
-    concat(self->dirPath, uriStr, path, size);
+    u32 pathLength = strlen(self->dirPath) + strlen(uriStr) + 1;
+    char path[pathLength];
+    concat(self->dirPath, uriStr, path, sizeof(char) * pathLength);
 
     bool skip = false;
     for (u32 j = 0; j < self->ltnSize / TEXTURES_NAMES_SIZE && self->ltnIdx; j++) {
@@ -247,34 +240,29 @@ Texture* getTextures(Model* self) {
     }
 
     if (!skip) {
-      // if diffuse texture
-      if (strstr(uriStr, "baseColor")) {
-        // add texture
-        Texture tex = textureCreate(path, "diffuse", unit);
-        if (outIdx == outItemsCount) {
-          size_t sz = sizeof(Texture) * outItemsCount;
-          arrResizeTexture(&out, sz, &sz);
-          outItemsCount = sz / sizeof(Texture);
-        }
-        out[outIdx++] = tex;
-        cacheTexture(self, tex, (char*)uriStr);
+      char* texType;
 
-        // if specular texture
-      } else if (strstr(uriStr, "metallicRoughness")) {
-        Texture tex = textureCreate(path, "specular", unit++);
-        if (outIdx == outItemsCount) {
-          size_t sz = sizeof(Texture) * outItemsCount;
-          arrResizeTexture(&out, sz, &sz);
-          outItemsCount = sz / sizeof(Texture);
-        }
-        out[outIdx++] = tex;
-        cacheTexture(self, tex, (char*)uriStr);
+      if (strstr(uriStr, "baseColor"))
+        texType = "diffuse";
+      else if (strstr(uriStr, "metallicRoughness"))
+        texType = "specular";
+      else {
+        printf("Unhandled texture type\n");
+        exit(EXIT_FAILURE);
       }
-    }
 
-    free(path);
+      Texture tex = textureCreate(path, texType, unit++);
+      if (outIdx == outItemsCount) {
+        size_t sz = sizeof(Texture) * outItemsCount;
+        arrResizeTexture(&out, sz, &sz);
+        outItemsCount = sz / sizeof(Texture);
+      }
+      out[outIdx++] = tex;
+      cacheTexture(self, tex, uriStr);
+    }
   }
 
+  *outCount = outItemsCount;
   return out;
 }
 
@@ -299,17 +287,15 @@ float* assembleVertices(vec3s* positions, u32 positionsCount, vec3s* normals, ve
   return vertices;
 }
 
-void cacheTexture(Model* self, Texture tex, char* texName) {
+void cacheTexture(Model* self, Texture tex, const char* texName) {
   // Push backs textures (all unique)
-  if (self->ltIdx == self->ltSize / sizeof(self->loadedTexs[0])) {
+  if (self->ltIdx == self->ltSize / sizeof(self->loadedTexs[0]))
     arrResizeTexture(&self->loadedTexs, self->ltSize, &self->ltSize);
-  }
   self->loadedTexs[self->ltIdx++] = tex;
 
   // Push backs textures names (may repeate)
-  if (self->ltnIdx == self->ltnSize / sizeof(self->loadedTexsNames[0])) {
+  if (self->ltnIdx == self->ltnSize / sizeof(self->loadedTexsNames[0]))
     arrResizeCharPtr(&self->loadedTexsNames, self->ltnSize, &self->ltnSize);
-  }
   self->loadedTexsNames[self->ltnIdx++] = (char*)texName;
 }
 
@@ -364,11 +350,11 @@ void loadMesh(Model* self, u32 idxMesh) {
 
   // ========== JSON["meshes"][idxMesh]["primitives"][0]["indices"] ========== //
 
-  json* jIndices;
-  if (!json_object_object_get_ex(primitive0, "indices", &jIndices))
+  json* indicesJson;
+  if (!json_object_object_get_ex(primitive0, "indices", &indicesJson))
     printf("Can't get \"indices\" from json\n");
   else
-    indAccIdx = json_object_get_int(jIndices);
+    indAccIdx = json_object_get_int(indicesJson);
 
   // ========================================================================= //
 
@@ -388,16 +374,21 @@ void loadMesh(Model* self, u32 idxMesh) {
   float* texVecs = getFloats(self, json_object_array_get_idx(accessors, texAccIdx), &texVecsCount);
   vec2s* texUVs = getFloatsVec2(texVecs, texVecsCount);
 
-  u32 indicesCount;
   float* vertices = assembleVertices(positions, posVecsCount, normals, texUVs);
+
+  u32 indicesCount;
   GLuint* indices = getIndices(self, json_object_array_get_idx(accessors, indAccIdx), &indicesCount);
-  Texture* textures = getTextures(self);
+
+  u32 texturesCount;
+  Texture* textures = getTextures(self, &texturesCount);
+
+  Object mesh = objectCreate(vertices, posVecsCount * sizeof(float), indices, indicesCount * sizeof(GLuint), self->shader);
+  for (int i = 0; i < texturesCount; i++)
+    objectAddTexture(&mesh, &textures[i]);
 
   // Push back the mesh
-  Object mesh = objectCreate(vertices, posVecsCount * 3 * sizeof(float), indices, indicesCount * 3 * sizeof(GLuint), self->shader);
-  if (self->meshesIdx == self->meshesSize / sizeof(self->meshes[0])) {
+  if (self->meshesIdx == self->meshesSize / sizeof(self->meshes[0]))
     arrResizeObject(&self->meshes, self->meshesSize, &self->meshesSize);
-  }
   self->meshes[self->meshesIdx++] = mesh;
 
   free(posVecs);
@@ -406,9 +397,11 @@ void loadMesh(Model* self, u32 idxMesh) {
   free(normals);
   free(texVecs);
   free(texUVs);
+
+  // Freeing, because object copies vertices and indices (may be contructed from stack/heap vertices or indices)
   free(vertices);
   free(indices);
-  free(textures);
+  // Not freeing texture, because object only keeps malloc()'ed textures (freeing them on its own)
 }
 
 void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
@@ -522,45 +515,43 @@ Model modelCreate(const char* modelDirectory, const GLint* shader) {
   static const char* sceneGLTF = "scene.gltf";
 
   // Folder + file
-  rsize_t size = strlen(modelDirectory) + strlen(sceneGLTF) + 1;
-  char* gltfPath = malloc(size);
-  concat(modelDirectory, sceneGLTF, gltfPath, size);
+  u32 gltfPathLength = strlen(modelDirectory) + strlen(sceneGLTF) + 1;
+  char gltfPath[gltfPathLength];
+  concat(modelDirectory, sceneGLTF, gltfPath, sizeof(char) * gltfPathLength);
 
   // Read .gltf
   char* buffer = readFile(gltfPath, false);
 
-  Model model = {
-    .dirPath = modelDirectory,
-    .json = json_tokener_parse(buffer),
-    .data = getData(&model),
-    .shader = shader,
-    .ltnIdx = 0,
-    .ltnSize = TEXTURES_NAMES_SIZE,
-    .loadedTexsNames = malloc(model.ltnSize),
-    .ltIdx = 0,
-    .ltSize = sizeof(Texture),
-    .loadedTexs = malloc(model.ltSize),
-    .meshesIdx = 0,
-    .meshesSize = sizeof(Object),
-    .meshes = malloc(model.meshesSize),
-    .tmIdx = 0,
-    .tmSize = sizeof(vec3s),
-    .translationMeshes = malloc(model.tmSize),
-    .rmIdx = 0,
-    .rmSize = sizeof(vec4s),
-    .rotationMeshes = malloc(model.rmSize),
-    .smIdx = 0,
-    .smSize = sizeof(vec3s),
-    .scaleMeshes = malloc(model.smSize),
-    .mmIdx = 0,
-    .mmSize = sizeof(mat4s),
-    .matMeshes = malloc(model.mmSize),
-  };
+  Model model;
+  model.dirPath = modelDirectory;
+  model.json = json_tokener_parse(buffer);
+  model.data = getData(&model);
+  model.shader = shader;
+  model.ltnIdx = 0;
+  model.ltnSize = TEXTURES_NAMES_SIZE;
+  model.loadedTexsNames = malloc(model.ltnSize);
+  model.ltIdx = 0;
+  model.ltSize = sizeof(Texture);
+  model.loadedTexs = malloc(model.ltSize);
+  model.meshesIdx = 0;
+  model.meshesSize = sizeof(Object);
+  model.meshes = malloc(model.meshesSize);
+  model.tmIdx = 0;
+  model.tmSize = sizeof(vec3s);
+  model.translationMeshes = malloc(model.tmSize);
+  model.rmIdx = 0;
+  model.rmSize = sizeof(vec4s);
+  model.rotationMeshes = malloc(model.rmSize);
+  model.smIdx = 0;
+  model.smSize = sizeof(vec3s);
+  model.scaleMeshes = malloc(model.smSize);
+  model.mmIdx = 0;
+  model.mmSize = sizeof(mat4s);
+  model.matMeshes = malloc(model.mmSize);
 
   mat4 traverseMatInit = GLM_MAT4_IDENTITY_INIT;
   traverseNode(&model, 0, traverseMatInit);
 
-  free(gltfPath);
   free(buffer);
 
   return model;
@@ -579,8 +570,13 @@ void modelDraw(const Model* self, const Camera* camera) {
 void modelDelete(Model* self) {
   free(self->data);
   free(self->loadedTexsNames);
-  free(self->loadedTexs);
+
+  free(self->loadedTexs); // Object deletes them?
+
+  for (int i = 0; i < self->meshesIdx; i++)
+    objectDelete(&self->meshes[i]);
   free(self->meshes);
+
   free(self->translationMeshes);
   free(self->rotationMeshes);
   free(self->scaleMeshes);
