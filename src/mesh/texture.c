@@ -33,11 +33,14 @@ Texture textureCreate(const char* path, const char* type, GLenum slot) {
   stbi_image_free(imgBytes);
   glBindTexture(GL_TEXTURE_2D, 0); // Unbind
 
-  Texture tex = {
-    .id = textureId,
-    .slot = slot,
-    .type = type
-  };
+  char* fileName;
+  getFileNameFromPath(path, fileName);
+
+  Texture tex;
+  tex.id = textureId;
+  tex.slot = slot;
+  tex.type = type;
+  tex.name = fileName;
 
   return tex;
 }

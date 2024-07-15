@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <windows.h>
 
-#include "cglm/struct/mat4.h"
 #include "mesh/shader.h"
 #include "mesh/model.h"
 #include "inputs.h"

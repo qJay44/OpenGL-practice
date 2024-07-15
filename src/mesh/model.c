@@ -7,9 +7,7 @@
 #include "cglm/types.h"
 #include "object.h"
 
-#define TEXTURE_NAME_LENGTH 0xff // Maxmimum allowed characters per char* for textures
-#define TEXTURE_NAMES_COUNT 20   // Length of array of textures names
-#define TEXTURES_NAMES_SIZE (sizeof(char) * TEXTURE_NAME_LENGTH * TEXTURE_NAMES_COUNT)
+#define MODEL_CACHED_TEXTURES_LENGTH 20
 
 byte* getData(const Model* self) {
   json* buffers;
@@ -64,22 +62,20 @@ float* getFloats(const Model* self, const json* accessor, u32* outCount) {
   else if (!strcmp(type, "VEC3"))   numPerVert = 3;
   else if (!strcmp(type, "VEC4"))   numPerVert = 4;
   else {
-    printf("type is invalid (not SCALAR, VEC2, VEC3, or VEC4\n)");
+    printf("Unhandled vertices type (not SCALAR, VEC2, VEC3, or VEC4\n)");
     exit(EXIT_FAILURE);
   }
 
   u32 beginningOfData = byteOffset + accByteOffset;
   u32 lengthOfData = count * 4 * numPerVert;
-
-  u32 outIdx = 0;
   float* out = malloc(sizeof(float) * lengthOfData);
 
-  for (u32 i = beginningOfData; i < beginningOfData + lengthOfData; i++) {
-    u32 ii = i << 2;
+  for (u32 i = 0; i < lengthOfData; i++) {
+    u32 ii = beginningOfData + (i << 2);
     byte bytes[4] = {self->data[ii], self->data[ii + 1], self->data[ii + 2], self->data[ii + 3]};
     float value;
     memcpy(&value, bytes, sizeof(float));
-    out[outIdx++] = value;
+    out[i] = value;
   }
 
   *outCount = lengthOfData;
@@ -123,6 +119,7 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
     // unsigned int
     case 5125:
       outItemsCount = count * 4;
+      // FIXME: crash after malloc()?
       out = malloc(sizeof(GLuint) * outItemsCount);
       for (u32 i = 0; i < outItemsCount; i++) {
         u32 ii = beginningOfData + (i << 2);
@@ -163,7 +160,6 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
   }
 
   *outCount = outItemsCount;
-  printf("111\n");
   return out;
 }
 
@@ -200,12 +196,10 @@ vec4s* getFloatsVec4(const float* vecs, u32 vecsCount) {
   return out;
 }
 
-Texture* getTextures(Model* self, u32* outCount) {
+void getTextures(Model* self) {
+  static Texture cachedTextures[MODEL_CACHED_TEXTURES_LENGTH];
+  static u32 cachedTexturesIdx = 0;
   static u32 unit = 0;
-
-  u32 outItemsCount = 1;
-  u32 outIdx = 0;
-  Texture* out = malloc(sizeof(Texture) * outItemsCount);
 
   json* images;
   if (!json_object_object_get_ex(self->json, "images", &images))
@@ -226,14 +220,10 @@ Texture* getTextures(Model* self, u32* outCount) {
     concat(self->dirPath, uriStr, path, sizeof(char) * pathLength);
 
     bool skip = false;
-    for (u32 j = 0; j < self->ltnSize / TEXTURES_NAMES_SIZE && self->ltnIdx; j++) {
-      if (strcmp(self->loadedTexsNames[j], uriStr)) {
-        if (outIdx == outItemsCount) {
-          size_t sz = sizeof(Texture) * outItemsCount;
-          arrResizeTexture(&out, sz, &sz);
-          outItemsCount = sz / sizeof(Texture);
-        }
-        out[outIdx++] = self->loadedTexs[j];
+    for (u32 j = 0; j < cachedTexturesIdx; j++) {
+      if (strcmp(cachedTextures[j].name, uriStr)) {
+        assert(self->texturesIdx < MODEL_TEXTURES_LENGTH);
+        self->textures[self->texturesIdx++] = &cachedTextures[j];
         skip = true;
         break;
       }
@@ -251,19 +241,13 @@ Texture* getTextures(Model* self, u32* outCount) {
         exit(EXIT_FAILURE);
       }
 
-      Texture tex = textureCreate(path, texType, unit++);
-      if (outIdx == outItemsCount) {
-        size_t sz = sizeof(Texture) * outItemsCount;
-        arrResizeTexture(&out, sz, &sz);
-        outItemsCount = sz / sizeof(Texture);
-      }
-      out[outIdx++] = tex;
-      cacheTexture(self, tex, uriStr);
+      assert(cachedTexturesIdx < MODEL_CACHED_TEXTURES_LENGTH);
+      cachedTextures[cachedTexturesIdx++] = textureCreate(path, texType, unit++);
+
+      assert(self->texturesIdx < MODEL_TEXTURES_LENGTH);
+      self->textures[self->texturesIdx] = &cachedTextures[cachedTexturesIdx - 1];
     }
   }
-
-  *outCount = outItemsCount;
-  return out;
 }
 
 float* assembleVertices(vec3s* positions, u32 positionsCount, vec3s* normals, vec2s* texUVs) {
@@ -285,18 +269,6 @@ float* assembleVertices(vec3s* positions, u32 positionsCount, vec3s* normals, ve
   }
 
   return vertices;
-}
-
-void cacheTexture(Model* self, Texture tex, const char* texName) {
-  // Push backs textures (all unique)
-  if (self->ltIdx == self->ltSize / sizeof(self->loadedTexs[0]))
-    arrResizeTexture(&self->loadedTexs, self->ltSize, &self->ltSize);
-  self->loadedTexs[self->ltIdx++] = tex;
-
-  // Push backs textures names (may repeate)
-  if (self->ltnIdx == self->ltnSize / sizeof(self->loadedTexsNames[0]))
-    arrResizeCharPtr(&self->loadedTexsNames, self->ltnSize, &self->ltnSize);
-  self->loadedTexsNames[self->ltnIdx++] = (char*)texName;
 }
 
 void loadMesh(Model* self, u32 idxMesh) {
@@ -379,12 +351,11 @@ void loadMesh(Model* self, u32 idxMesh) {
   u32 indicesCount;
   GLuint* indices = getIndices(self, json_object_array_get_idx(accessors, indAccIdx), &indicesCount);
 
-  u32 texturesCount;
-  Texture* textures = getTextures(self, &texturesCount);
+  getTextures(self);
 
-  Object mesh = objectCreate(vertices, posVecsCount * sizeof(float), indices, indicesCount * sizeof(GLuint), self->shader);
-  for (int i = 0; i < texturesCount; i++)
-    objectAddTexture(&mesh, &textures[i]);
+  Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * 8, indices, indicesCount * sizeof(GLuint), self->shader);
+  for (int i = 0; i < self->texturesIdx; i++)
+    objectAddTexture(&mesh, self->textures[i]);
 
   // Push back the mesh
   if (self->meshesIdx == self->meshesSize / sizeof(self->meshes[0]))
@@ -398,10 +369,9 @@ void loadMesh(Model* self, u32 idxMesh) {
   free(texVecs);
   free(texUVs);
 
-  // Freeing, because object copies vertices and indices (may be contructed from stack/heap vertices or indices)
+  // Freeing, because object copies vertices and indices (they can be constructed from stack/heap vertices or indices)
   free(vertices);
   free(indices);
-  // Not freeing texture, because object only keeps malloc()'ed textures (freeing them on its own)
 }
 
 void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
@@ -426,6 +396,7 @@ void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
   vec4 rotation = {1.f, 0.f, 0.f, 0.f};
   json* rotationJson;
   if (json_object_object_get_ex(node, "rotation", &rotationJson)) {
+    assert(json_object_array_length(rotationJson) == 4);
     for (int i = 0; i < 4; i++) {
       json* rJson = json_object_array_get_idx(rotationJson, i);
       rotation[i] = (float)json_object_get_double(rJson);
@@ -527,12 +498,7 @@ Model modelCreate(const char* modelDirectory, const GLint* shader) {
   model.json = json_tokener_parse(buffer);
   model.data = getData(&model);
   model.shader = shader;
-  model.ltnIdx = 0;
-  model.ltnSize = TEXTURES_NAMES_SIZE;
-  model.loadedTexsNames = malloc(model.ltnSize);
-  model.ltIdx = 0;
-  model.ltSize = sizeof(Texture);
-  model.loadedTexs = malloc(model.ltSize);
+  model.texturesIdx = 0;
   model.meshesIdx = 0;
   model.meshesSize = sizeof(Object);
   model.meshes = malloc(model.meshesSize);
@@ -569,9 +535,7 @@ void modelDraw(const Model* self, const Camera* camera) {
 
 void modelDelete(Model* self) {
   free(self->data);
-  free(self->loadedTexsNames);
-
-  free(self->loadedTexs); // Object deletes them?
+  json_object_put(self->json);
 
   for (int i = 0; i < self->meshesIdx; i++)
     objectDelete(&self->meshes[i]);

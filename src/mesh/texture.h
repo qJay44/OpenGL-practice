@@ -5,6 +5,7 @@ typedef struct {
   GLuint id;
   GLuint slot;
   const char* type;
+  const char* name;
 } Texture;
 
 [[nodiscard]]

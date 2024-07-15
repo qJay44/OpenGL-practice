@@ -6,7 +6,7 @@
 char* readFile(const char* path, bool printContent) {
   FILE* fptr;
   u32 itemsCount = 0xff;
-  char* buffer = malloc(sizeof(char) * itemsCount);
+  char* buffer = malloc(sizeof(char) * itemsCount + 1);
 
   fopen_s(&fptr, path, "r");
 
@@ -22,7 +22,7 @@ char* readFile(const char* path, bool printContent) {
       buffer[i++] = fgetc(fptr);
     }
     // Crop at the last element
-    size_t sz = sizeof(char) * i;
+    size_t sz = sizeof(char) * i + 1;
     arrResizeChar(&buffer, sz, &sz);
 
     if (printContent) {
@@ -70,6 +70,12 @@ byte* readFileBytes(const char* path) {
 
 }
 
+void getFileNameFromPath(const char* path, char* dst) {
+  if (path == NULL)
+    printf("(getFileNameFromPath) the given path is NULL\n");
+  (dst = strchr(path, '/')) ? ++dst : (dst = (char*)path);
+}
+
 /**
  * C++ version 0.4 char* style "itoa":
  * Written by Lukás Chmela
@@ -98,6 +104,11 @@ void int2str(int value, char* result, int base) {
         *ptr--= *ptr1;
         *ptr1++ = tmp_char;
     }
+}
+
+void concat(const char* s1, const char* s2, char* out, size_t outSize) {
+  strcpy_s(out, outSize, s1);
+  strcat_s(out, outSize, s2);
 }
 
 void arrResizeFloat(float** arr, size_t oldSize, size_t* outNewSize) {
@@ -177,39 +188,6 @@ void arrResizeObject(Object** arr, size_t oldSize, size_t* outNewSize) {
   *arr = newArr;
 }
 
-void arrResizeTexture(Texture** arr, size_t oldSize, size_t* outNewSize) {
-  *outNewSize = oldSize * 2;
-  Texture* newArr = malloc(*outNewSize);
-
-  for (int i = 0; i < oldSize / sizeof(Texture); i++)
-    newArr[i] = (*arr)[i];
-
-  free(*arr);
-  *arr = newArr;
-}
-
-void arrResizeChar(char** arr, size_t oldSize, size_t* outNewSize) {
-  *outNewSize = oldSize * 2;
-  char* newArr = malloc(*outNewSize);
-
-  for (int i = 0; i < oldSize / sizeof(char); i++)
-    newArr[i] = (*arr)[i];
-
-  free(*arr);
-  *arr = newArr;
-}
-
-void arrResizeCharPtr(char*** arr, size_t oldSize, size_t* outNewSize) {
-  *outNewSize = oldSize * 2;
-  char** newArr = malloc(sizeof(char) * *outNewSize);
-
-  for (int i = 0; i < oldSize / sizeof(char); i++)
-    newArr[i] = (*arr)[i];
-
-  free(*arr);
-  *arr = newArr;
-}
-
 void arrResizeByte(byte** arr, size_t oldSize, size_t* outNewSize) {
   *outNewSize = oldSize * 2;
   byte* newArr = malloc(sizeof(byte) * *outNewSize);
@@ -221,8 +199,14 @@ void arrResizeByte(byte** arr, size_t oldSize, size_t* outNewSize) {
   *arr = newArr;
 }
 
-void concat(const char* s1, const char* s2, char* out, rsize_t outSize) {
-  strcpy_s(out, outSize, s1);
-  strcat_s(out, outSize, s2);
+void arrResizeChar(char** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  char* newArr = malloc(sizeof(char) * *outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(char); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
 }
 

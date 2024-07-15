@@ -8,6 +8,8 @@
 #include "object.h"
 #include "texture.h"
 
+#define MODEL_TEXTURES_LENGTH 0xff
+
 typedef struct json_object json;
 
 typedef struct {
@@ -16,12 +18,8 @@ typedef struct {
   byte* data;
   const GLint* shader;
 
-  char** loadedTexsNames;
-  size_t ltnSize;
-  u32 ltnIdx;
-  Texture* loadedTexs;
-  size_t ltSize;
-  u32 ltIdx;
+  Texture* textures[MODEL_TEXTURES_LENGTH];
+  u32 texturesIdx;
 
   Object* meshes;
   size_t meshesSize;
@@ -51,10 +49,9 @@ typedef struct {
 [[nodiscard]] static vec2s* getFloatsVec2(const float* vecs, u32 vecsCount);
 [[nodiscard]] static vec3s* getFloatsVec3(const float* vecs, u32 vecsCount);
 [[nodiscard]] static vec4s* getFloatsVec4(const float* vecs, u32 vecsCount);
-[[nodiscard]] static Texture* getTextures(Model* self, u32* outCount);
+static void getTextures(Model* self);
 [[nodiscard]] static float* assembleVertices(vec3s* positions, u32 positionsCount, vec3s* normals, vec2s* texUVs);
 
-static void cacheTexture(Model* self, Texture tex, const char* texName);
 static void loadMesh(Model* self, u32 idxMesh);
 static void traverseNode(Model* self, u32 nextNode, mat4 matrix);
 

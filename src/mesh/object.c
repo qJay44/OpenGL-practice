@@ -27,7 +27,7 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
   vboBind(&obj.vbo, obj.vertices, obj.vertSize);
   eboBind(&obj.ebo, obj.indices, obj.indSize);
 
-  // Link attributes //
+  // ===== Link attributes ===== //
 
   size_t typeSize = sizeof(GLfloat);
   size_t stride = 11 * typeSize;
@@ -37,11 +37,11 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
   vaoLinkAttrib(2, 2, GL_FLOAT, stride, (void*)(6 * typeSize));
   vaoLinkAttrib(3, 3, GL_FLOAT, stride, (void*)(8 * typeSize));
 
+  // =========================== //
+
   vboUnbind();
   vaoUnbind();
   eboUnbind();
-
-  /////////////////////
 
   return obj;
 }
@@ -145,10 +145,8 @@ void objectDelete(Object* self) {
   free(self->vertices);
   free(self->indices);
 
-  for (int i = 0; i < self->texsCount; i++) {
+  for (int i = 0; i < self->texsCount; i++)
     textureDelete(self->textures[i], 1);
-    free(self->textures[i]);
-  }
 
   glDeleteProgram(*self->shaderProgram);
 }

@@ -6,7 +6,10 @@
 
 [[nodiscard]] char* readFile(const char* path, bool printContent);
 [[nodiscard]] byte* readFileBytes(const char* path);
+
+void getFileNameFromPath(const char* path, char* dst);
 void int2str(int value, char* result, int base);
+void concat(const char* s1, const char* s2, char* out, size_t outSize);
 
 void arrResizeFloat(float** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeUint(u32** arr, size_t oldSize, size_t* outNewSize);
@@ -15,11 +18,8 @@ void arrResizeVec3s(vec3s** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeVec4s(vec4s** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeMat4s(mat4s** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeObject(Object** arr, size_t oldSize, size_t* outNewSize);
-void arrResizeTexture(Texture** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeChar(char** arr, size_t oldSize, size_t* outNewSize);
-void arrResizeCharPtr(char*** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeByte(byte** arr, size_t oldSize, size_t* outNewSize);
-void concat(const char* s1, const char* s2, char* out, rsize_t outSize);
 
 #endif
 
