@@ -10,7 +10,7 @@ out vec2 texCoord;
 out vec3 vertNormal;
 out vec3 vertPos;
 
-uniform mat4 camMatrix;
+uniform mat4 camMat;
 uniform mat4 model;
 uniform mat4 translation;
 uniform mat4 rotation;
@@ -19,9 +19,9 @@ uniform mat4 scale;
 void main() {
   vertPos = vec3(model * translation * -rotation * scale * vec4(pos, 1.f));
   color = col;
-  texCoord = mat2(0.f, -1.f, 1.f, 0.f) * tex;
+  texCoord = mat2(0.f, -1.f, 1.f, 0.f) * tex; // FIXME: Without multiplication looks better
   vertNormal = normal;
 
-  gl_Position = camMatrix * vec4(vertPos, 1.f);
+  gl_Position = camMat * vec4(vertPos, 1.f);
 }
 

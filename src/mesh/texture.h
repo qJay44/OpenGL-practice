@@ -9,7 +9,7 @@ typedef struct {
 } Texture;
 
 [[nodiscard]]
-Texture textureCreate(const char* path, const char* type, GLenum slot);
+Texture textureCreate(const char* path, const char* type);
 void textureBind(const Texture* self);
 void textureUnbind(GLenum texType);
 void textureUnit(const GLint* shader, const char* uniform, GLuint unit);

@@ -170,7 +170,6 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
 void getTextures(Model* self) {
   static Texture cachedTextures[MODEL_CACHED_TEXTURES_LENGTH];
   static u32 cachedTexturesIdx = 0;
-  static u32 unit = 0;
 
   json* images;
   if (!json_object_object_get_ex(self->json, "images", &images))
@@ -213,10 +212,10 @@ void getTextures(Model* self) {
       }
 
       assert(cachedTexturesIdx < MODEL_CACHED_TEXTURES_LENGTH);
-      cachedTextures[cachedTexturesIdx++] = textureCreate(path, texType, unit++);
+      cachedTextures[cachedTexturesIdx++] = textureCreate(path, texType);
 
       assert(self->texturesIdx < MODEL_TEXTURES_LENGTH);
-      self->textures[self->texturesIdx] = &cachedTextures[cachedTexturesIdx - 1];
+      self->textures[self->texturesIdx++] = &cachedTextures[cachedTexturesIdx - 1];
     }
   }
 }
@@ -229,6 +228,7 @@ float* assembleVertices(float* positions, float* normals, float* texUVs, u32 cou
      * normals are vec3,
      * texUVs are vec2
   */
+  // NOTE: Must always be in this order: positions (3), colors (3), texture coords (2), normals (3)
   for (int i = 0; i < count; i++) {
     int i11 = i * OBJECT_VERTEX_ATTRIBUTES;
     int i3 = i * 3;
@@ -242,17 +242,17 @@ float* assembleVertices(float* positions, float* normals, float* texUVs, u32 cou
     vertices[i11 + 1] = positions[i3 + 1];
     vertices[i11 + 2] = positions[i3 + 2];
 
-    vertices[i11 + 3] = normals[i3 + 0];
-    vertices[i11 + 4] = normals[i3 + 1];
-    vertices[i11 + 5] = normals[i3 + 2];
-
     // Color
-    vertices[i11 + 6] = 1.f;
-    vertices[i11 + 7] = 1.f;
-    vertices[i11 + 8] = 1.f;
+    vertices[i11 + 3] = 1.f;
+    vertices[i11 + 4] = 1.f;
+    vertices[i11 + 5] = 1.f;
 
-    vertices[i11 + 9]  = texUVs[i2 + 0];
-    vertices[i11 + 10] = texUVs[i2 + 1];
+    vertices[i11 + 6] = texUVs[i2 + 0];
+    vertices[i11 + 7] = texUVs[i2 + 1];
+
+    vertices[i11 + 8]  = normals[i3 + 0];
+    vertices[i11 + 9]  = normals[i3 + 1];
+    vertices[i11 + 10] = normals[i3 + 2];
   }
 
   return vertices;

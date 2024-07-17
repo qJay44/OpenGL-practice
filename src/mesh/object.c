@@ -7,6 +7,7 @@
 #include "cglm/quat.h"
 
 #include "texture.h"
+#include "vao.h"
 #include "object.h"
 
 Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, const GLint* shader) {
@@ -42,6 +43,7 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
 
   // =========================== //
 
+  // Unbind
   vboUnbind();
   vaoUnbind();
   eboUnbind();
@@ -50,24 +52,40 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
 }
 
 Object objectCreatePyramid(const GLint* shader) {
-  float vertices[40] = {
-    -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,
-    -0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,
-     0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,
-     0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,
-     0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,	 2.5f, 5.0f
+  // Positions (3), colors (3), texture coords (2), normals (3)
+  float vertices[176] = {
+    -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,  0.0f, -1.0f, 0.0f, // Bottom side
+    -0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 0.0f, 5.0f,  0.0f, -1.0f, 0.0f, // Bottom side
+     0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 5.0f,  0.0f, -1.0f, 0.0f, // Bottom side
+     0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,  0.0f, -1.0f, 0.0f, // Bottom side
+
+    -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,  0.8f, 0.5f,  0.0f, // Left Side
+    -0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,  0.8f, 0.5f,  0.0f, // Left Side
+     0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,  0.8f, 0.5f,  0.0f, // Left Side
+
+    -0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,  0.0f, 0.5f, -0.8f, // Non-facing side
+     0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,  0.0f, 0.5f, -0.8f, // Non-facing side
+     0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,  0.0f, 0.5f, -0.8f, // Non-facing side
+
+     0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,  0.8f, 0.5f,  0.0f, // Right side
+     0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,  0.8f, 0.5f,  0.0f, // Right side
+     0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,  0.8f, 0.5f,  0.0f, // Right side
+
+     0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,  0.0f, 0.5f,  0.8f, // Facing side
+    -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,  0.0f, 0.5f,  0.8f, // Facing side
+     0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,  0.0f, 0.5f,  0.8f  // Facing side
   };
 
   GLuint indices[18] = {
-    0, 1, 2,
-    0, 2, 3,
-    0, 1, 4,
-    1, 2, 4,
-    2, 3, 4,
-    3, 0, 4
+    0, 1, 2,    // Bottom side
+    0, 2, 3,    // Bottom side
+    4, 6, 5,    // Left side
+    7, 9, 8,    // Non-facing side
+    10, 12, 11, // Right side
+    13, 15, 14  // Facing side
   };
 
-  return objectCreate(vertices, sizeof(float) * 40, indices, sizeof(GLuint) * 18, shader);
+  return objectCreate(vertices, sizeof(float) * 176, indices, sizeof(GLuint) * 18, shader);
 }
 
 
@@ -114,7 +132,7 @@ void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const 
 
 void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, versors rotation, vec3s scale) {
   glUseProgram(*self->shaderProgram);
-  glBindVertexArray(self->vao.id);
+  vaoBind(&self->vao);
 
   u8 numDiffuse = 0;
   u8 numSpecular = 0;
@@ -143,7 +161,7 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
   }
 
   objectSetVec3Unifrom(self, "camPos", camera->position);
-  objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "matCam");
+  objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "camMat");
 
   mat4s trans = GLMS_MAT4_IDENTITY_INIT;
   mat4s rot = GLMS_MAT4_IDENTITY_INIT;
@@ -159,6 +177,7 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
   glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "model"), 1, GL_FALSE, (const GLfloat*)matrix.raw);
 
   glDrawElements(GL_TRIANGLES, self->indSize / sizeof(self->indices[0]), GL_UNSIGNED_INT, 0);
+  vaoUnbind();
 }
 
 void objectDelete(Object* self) {
@@ -171,7 +190,5 @@ void objectDelete(Object* self) {
 
   for (int i = 0; i < self->texsCount; i++)
     textureDelete(self->textures[i], 1);
-
-  glDeleteProgram(*self->shaderProgram);
 }
 

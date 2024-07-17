@@ -1,6 +1,12 @@
 #include "texture.h"
+#include <assert.h>
+#include <gl/gl.h>
 
-Texture textureCreate(const char* path, const char* type, GLenum slot) {
+Texture textureCreate(const char* path, const char* type) {
+  static u16 slot = 0;
+
+  assert(slot < GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+
   int imgWidth, imgHeight, imgColorChannels;
   stbi_set_flip_vertically_on_load(true);
   byte* imgBytes = stbi_load(path, &imgWidth, &imgHeight, &imgColorChannels, 0);
@@ -35,7 +41,7 @@ Texture textureCreate(const char* path, const char* type, GLenum slot) {
 
   Texture tex;
   tex.id = textureId;
-  tex.slot = slot;
+  tex.slot = slot++;
   tex.type = type;
   tex.name = getFileNameFromPath(path);
 

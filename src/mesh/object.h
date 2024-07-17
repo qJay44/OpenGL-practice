@@ -8,7 +8,7 @@
 #include "ebo.h"
 #include "texture.h"
 
-#define OBJECT_MAX_TEXTURES 8
+#define OBJECT_MAX_TEXTURES 0xf
 #define OBJECT_VERTEX_ATTRIBUTES 11 // 3 (position) + 3 (normal) + 3 (color) + 2 (texture)
 
 typedef struct {
