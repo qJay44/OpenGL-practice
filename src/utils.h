@@ -6,9 +6,8 @@
 
 [[nodiscard]] char* readFile(const char* path, bool printContent);
 [[nodiscard]] byte* readFileBytes(const char* path);
+[[nodiscard]] char* getFileNameFromPath(const char* path);
 
-void getFileNameFromPath(const char* path, char* dst);
-void int2str(int value, char* result, int base);
 void concat(const char* s1, const char* s2, char* out, size_t outSize);
 
 void arrResizeFloat(float** arr, size_t oldSize, size_t* outNewSize);

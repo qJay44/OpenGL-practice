@@ -2,10 +2,14 @@
 #include <stdio.h>
 #include <windows.h>
 
+#include "cglm/struct/mat4.h"
+#include "cglm/types-struct.h"
+#include "mesh/object.h"
 #include "mesh/shader.h"
 #include "mesh/model.h"
 #include "inputs.h"
 #include "camera.h"
+#include "mesh/texture.h"
 
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -44,9 +48,19 @@ int main() {
   glViewport(0, 0, 1200, 720);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
+  Texture defaultTextures[4] = {
+    textureCreate("src/textures/brick.png", "diffuse", 0),
+    textureCreate("src/textures/grass_block.png", "diffuse", 1),
+    textureCreate("src/textures/planks.png", "diffuse", 2),
+    textureCreate("src/textures/planksSpeck.png", "diffuse", 3),
+  };
+
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
   GLint mainShader = shaderCreate("src/shaders/main.vert", "src/shaders/main.frag");
   Model model = modelCreate("src/mesh/models/sword/", &mainShader);
+
+  Object pyramid = objectCreatePyramid(&mainShader);
+  objectAddTexture(&pyramid, &defaultTextures[0]);
 
   glEnable(GL_DEPTH_TEST);
 
@@ -74,6 +88,14 @@ int main() {
     cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
 
     modelDraw(&model, &camera);
+
+    {
+      mat4s mat = GLMS_MAT4_IDENTITY_INIT;
+      vec3s trans = (vec3s){0.f, 0.f, 0.f};
+      versors rot = (versors){0.f, 0.f, 0.f, 1.f};
+      vec3s sca = (vec3s){1.f, 1.f, 1.f};
+      objectDraw(&pyramid, &camera, mat, trans, rot, sca);
+    }
 
     glfwSwapBuffers(window);
     glfwPollEvents();

@@ -1,10 +1,13 @@
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "object.h"
 #include "cglm/struct/affine-pre.h"
 #include "cglm/struct/mat4.h"
+#include "cglm/quat.h"
+
 #include "texture.h"
+#include "object.h"
 
 Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, const GLint* shader) {
   Object obj = {
@@ -30,7 +33,7 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
   // ===== Link attributes ===== //
 
   size_t typeSize = sizeof(GLfloat);
-  size_t stride = 11 * typeSize;
+  size_t stride = OBJECT_VERTEX_ATTRIBUTES * typeSize;
 
   vaoLinkAttrib(0, 3, GL_FLOAT, stride, (void*)(0 * typeSize));
   vaoLinkAttrib(1, 3, GL_FLOAT, stride, (void*)(3 * typeSize));
@@ -46,11 +49,33 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
   return obj;
 }
 
+Object objectCreatePyramid(const GLint* shader) {
+  float vertices[40] = {
+    -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,
+    -0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,
+     0.5f, 0.0f, -0.5f,  0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,
+     0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,
+     0.0f, 0.8f,  0.0f,  0.92f, 0.86f, 0.76f,	 2.5f, 5.0f
+  };
+
+  GLuint indices[18] = {
+    0, 1, 2,
+    0, 2, 3,
+    0, 1, 4,
+    1, 2, 4,
+    2, 3, 4,
+    3, 0, 4
+  };
+
+  return objectCreate(vertices, sizeof(float) * 40, indices, sizeof(GLuint) * 18, shader);
+}
+
+
 void objectAddTexture(Object* self, Texture* tex) {
   if (self->texsCount < OBJECT_MAX_TEXTURES)
     self->textures[self->texsCount++] = tex;
   else
-    printf("Warning: trying to add a texture to the object when its reached maximum amount (%d)\n", OBJECT_MAX_TEXTURES);
+    printf("Warning: trying to add a texture to the object when reached maximum amount (%d)\n", OBJECT_MAX_TEXTURES);
 }
 
 void objectTranslate(Object* self, vec3s v) {
@@ -76,8 +101,8 @@ void objectSetVec4Unifrom(const Object* self, const char* name, vec4s v) {
 }
 
 void objectSetTextureUnifrom(const Object* self, const char* name, GLuint slot) {
-  GLuint uniTex = glGetUniformLocation(*self->shaderProgram, name);
   glUseProgram(*self->shaderProgram);
+  GLuint uniTex = glGetUniformLocation(*self->shaderProgram, name);
   glUniform1i(uniTex, slot);
 }
 
@@ -87,25 +112,27 @@ void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const 
   glUniformMatrix4fv(loc, 1, GL_FALSE, mat);
 }
 
-void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, vec4s rotation, vec3s scale) {
+void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, versors rotation, vec3s scale) {
   glUseProgram(*self->shaderProgram);
   glBindVertexArray(self->vao.id);
 
-  u32 numDiffuse = 0;
-  u32 numSpecular = 0;
+  u8 numDiffuse = 0;
+  u8 numSpecular = 0;
 
   for (int i = 0; i < self->texsCount; i++) {
     const char* texType = self->textures[i]->type;
-    char numStr[256];
+    char numStr[3];
     u8 uniformStrLength;
+    assert(numDiffuse < 256);
 
+    // BUG: the shader has only diffuse0/specular0
     if (strcmp(texType, "diffuse")) {
-      uniformStrLength = numDiffuse + 7;
-      int2str(numDiffuse++, numStr, 10);
+      uniformStrLength = 7 + 3;
+      sprintf(numStr, "%d", numDiffuse++);
 
     } else if (strcmp(texType, "specular")) {
-      uniformStrLength = numSpecular + 8;
-      int2str(numSpecular++, numStr, 10);
+      uniformStrLength = 8 + 3;
+      sprintf(numStr, "%d", numSpecular++);
     }
 
     char uniform[uniformStrLength + 1];
@@ -123,10 +150,7 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
   mat4s sca = GLMS_MAT4_IDENTITY_INIT;
 
   trans = glms_translate(trans, translation);
-  rot.m00 *= rotation.x;
-  rot.m11 *= rotation.y;
-  rot.m22 *= rotation.z;
-  rot.m33 *= rotation.w;
+  glm_quat_mat4(rotation.raw, rot.raw);
   glm_scale(sca.raw, scale.raw);
 
   glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "translation"), 1, GL_FALSE, (const GLfloat*)trans.raw);

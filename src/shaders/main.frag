@@ -1,4 +1,4 @@
-#version 460 core
+#version 330 core
 
 out vec4 FragColor;
 
@@ -7,8 +7,8 @@ in vec2 texCoord;
 in vec3 vertNormal;
 in vec3 vertPos;
 
-uniform sampler2D tex0;
-uniform sampler2D tex1;
+uniform sampler2D diffuse0;
+uniform sampler2D specular0;
 uniform vec4 lightColor;
 uniform vec3 lightPos;
 uniform vec3 camPos;
@@ -31,10 +31,10 @@ vec4 pointLight() {
   float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.f), 16);
   float specular = specAmount * specularLight;
 
-  vec4 tex0Col = texture(tex0, texCoord) * (diffuse * intensity + ambient);
-  float tex1Col = texture(tex1, texCoord).r * specular * intensity;
+  vec4 diffuse0Col = texture(diffuse0, texCoord) * (diffuse * intensity + ambient);
+  float specular0Col = texture(specular0, texCoord).r * specular * intensity;
 
-  return (tex0Col + tex1Col) * lightColor;
+  return (diffuse0Col + specular0Col) * lightColor;
 }
 
 vec4 directionalLight() {
@@ -49,10 +49,10 @@ vec4 directionalLight() {
   float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.f), 16);
   float specular = specAmount * specularLight;
 
-  vec4 tex0Col = texture(tex0, texCoord) * (diffuse + ambient);
-  float tex1Col = texture(tex1, texCoord).r * specular;
+  vec4 diffuse0Col = texture(diffuse0, texCoord) * (diffuse + ambient);
+  float specular0Col = texture(specular0, texCoord).r * specular;
 
-  return (tex0Col + tex1Col) * lightColor;
+  return (diffuse0Col + specular0Col) * lightColor;
 }
 
 vec4 spotLight() {
@@ -73,13 +73,13 @@ vec4 spotLight() {
   float angle = dot(vec3(0.f, -1.f, 0.f), -lightDirection);
   float intensity = clamp((angle - outerCone) / (innerCone - outerCone), 0.f, 1.f);
 
-  vec4 tex0Col = texture(tex0, texCoord) * (diffuse * intensity + ambient);
-  float tex1Col = texture(tex1, texCoord).r * specular * intensity;
+  vec4 diffuse0Col = texture(diffuse0, texCoord) * (diffuse * intensity + ambient);
+  float specular0Col = texture(specular0, texCoord).r * specular * intensity;
 
-  return (tex0Col + tex1Col) * lightColor;
+  return (diffuse0Col + specular0Col) * lightColor;
 }
 
 void main() {
-  FragColor = pointLight();
+  FragColor = directionalLight();
 }
 

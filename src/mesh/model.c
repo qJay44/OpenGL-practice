@@ -3,12 +3,13 @@
 #include <string.h>
 
 #include "model.h"
+#include "cglm/mat4.h"
 #include "cglm/struct/affine-pre.h"
 #include "cglm/types.h"
+#include "cglm/quat.h"
 #include "object.h"
 
 #define MODEL_CACHED_TEXTURES_LENGTH 20
-#define VERTEX_ATTRIBUTES 11 // 3 (position) + 3 (normal) + 3 (color) + 2 (texture)
 
 byte* getDataBin(const Model* self) {
   json* buffers;
@@ -157,7 +158,7 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
       }
       break;
     default:
-      printf("(getIndices) Unhandled component type\n");
+      printf("Unhandled component type\n");
       exit(EXIT_FAILURE);
       break;
   }
@@ -221,7 +222,7 @@ void getTextures(Model* self) {
 }
 
 float* assembleVertices(float* positions, float* normals, float* texUVs, u32 count) {
-  float* vertices = malloc(sizeof(float) * VERTEX_ATTRIBUTES * count);
+  float* vertices = malloc(sizeof(float) * OBJECT_VERTEX_ATTRIBUTES * count);
 
   /* Assuming that:
      * positions are vec3,
@@ -229,11 +230,11 @@ float* assembleVertices(float* positions, float* normals, float* texUVs, u32 cou
      * texUVs are vec2
   */
   for (int i = 0; i < count; i++) {
-    int i11 = i * VERTEX_ATTRIBUTES;
+    int i11 = i * OBJECT_VERTEX_ATTRIBUTES;
     int i3 = i * 3;
     int i2 = i * 2;
 
-    assert(i11 < count * VERTEX_ATTRIBUTES);
+    assert(i11 < count * OBJECT_VERTEX_ATTRIBUTES);
     assert(i3 < count * 3);
     assert(i2 < count * 2);
 
@@ -337,7 +338,7 @@ void loadMesh(Model* self, u32 idxMesh) {
 
   getTextures(self);
 
-  Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * VERTEX_ATTRIBUTES, indices, indicesCount * sizeof(GLuint), self->shader);
+  Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * OBJECT_VERTEX_ATTRIBUTES, indices, indicesCount * sizeof(GLuint), self->shader);
   for (int i = 0; i < self->texturesIdx; i++)
     objectAddTexture(&mesh, self->textures[i]);
 
@@ -350,7 +351,7 @@ void loadMesh(Model* self, u32 idxMesh) {
   free(normals);
   free(texUVs);
 
-  // Freeing, because object copies vertices and indices (they can be constructed from stack/heap vertices or indices)
+  // Freeing, because object copies vertices and indices (they can be constructed from stack/heap)
   free(vertices);
   free(indices);
 }
@@ -374,7 +375,7 @@ void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
   }
 
   // Rotation
-  vec4 rotation = {1.f, 0.f, 0.f, 0.f};
+  versor rotation = {0.f, 0.f, 0.f, 1.f};
   json* rotationJson;
   if (json_object_object_get_ex(node, "rotation", &rotationJson)) {
     assert(json_object_array_length(rotationJson) == 4);
@@ -409,18 +410,17 @@ void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
   }
 
   mat4 trans = GLM_MAT4_IDENTITY_INIT;
+  mat4 rot = GLM_MAT4_IDENTITY_INIT;
   mat4 sca = GLM_MAT4_IDENTITY_INIT;
 
   glm_translate(trans, translation);
+  glm_quat_mat4(rotation, rot);
   glm_scale(sca, scale);
 
-  mat4 matNextNode;
+  mat4 matNextNode = GLM_MAT4_IDENTITY_INIT;
   glm_mat4_mul(matrix, matNode, matNextNode);
   glm_mat4_mul(matNextNode, trans, matNextNode);
-  matNextNode[0][0] *= rotation[0];
-  matNextNode[1][1] *= rotation[1];
-  matNextNode[2][2] *= rotation[2];
-  matNextNode[3][3] *= rotation[3];
+  glm_mat4_mul(matNextNode, rot, matNextNode);
   glm_mat4_mul(matNextNode, sca, matNextNode);
 
   json* mesh;
@@ -505,13 +505,13 @@ Model modelCreate(const char* modelDirectory, const GLint* shader) {
 }
 
 void modelDraw(const Model* self, const Camera* camera) {
-  mat4s matrix = GLMS_MAT4_IDENTITY_INIT;
   vec3s translation = {0.f, 0.f, 0.f};
-  vec4s rotation = {1.f, 0.f, 0.f, 0.f};
+  versors rotation = {0.f, 0.f, 0.f, 1.f};
   vec3s scale = {1.f, 1.f, 1.f};
 
+  assert(self->meshesIdx == self->mmIdx);
   for (int i = 0; i < self->meshesIdx; i++)
-    objectDraw(&self->meshes[i], camera, matrix, translation, rotation, scale);
+    objectDraw(&self->meshes[i], camera, self->matMeshes[i], translation, rotation, scale);
 }
 
 void modelDelete(Model* self) {

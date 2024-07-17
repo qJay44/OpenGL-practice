@@ -1,4 +1,4 @@
-#version 460 core
+#version 330 core
 
 layout (location = 0) in vec3 pos;
 layout (location = 1) in vec3 col;
@@ -18,7 +18,6 @@ uniform mat4 scale;
 
 void main() {
   vertPos = vec3(model * translation * -rotation * scale * vec4(pos, 1.f));
-
   color = col;
   texCoord = mat2(0.f, -1.f, 1.f, 0.f) * tex;
   vertNormal = normal;

@@ -3,7 +3,7 @@
 Texture textureCreate(const char* path, const char* type, GLenum slot) {
   int imgWidth, imgHeight, imgColorChannels;
   stbi_set_flip_vertically_on_load(true);
-  unsigned char* imgBytes = stbi_load(path, &imgWidth, &imgHeight, &imgColorChannels, 0);
+  byte* imgBytes = stbi_load(path, &imgWidth, &imgHeight, &imgColorChannels, 0);
 
   GLuint textureId;
   glGenTextures(1, &textureId);
@@ -22,7 +22,7 @@ Texture textureCreate(const char* path, const char* type, GLenum slot) {
     case 3: imgChannel = GL_RGB; break;
     case 4: imgChannel = GL_RGBA; break;
     default:
-      printf("Automatic texture type recognition failed\n");
+      printf("Unhandled texture image color channels type\n");
       exit(EXIT_FAILURE);
   }
 
@@ -33,14 +33,11 @@ Texture textureCreate(const char* path, const char* type, GLenum slot) {
   stbi_image_free(imgBytes);
   glBindTexture(GL_TEXTURE_2D, 0); // Unbind
 
-  char* fileName;
-  getFileNameFromPath(path, fileName);
-
   Texture tex;
   tex.id = textureId;
   tex.slot = slot;
   tex.type = type;
-  tex.name = fileName;
+  tex.name = getFileNameFromPath(path);
 
   return tex;
 }
