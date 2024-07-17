@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <windows.h>
 
@@ -44,9 +45,6 @@ int main() {
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
-
-  //===== Uniforms ==============================//
-
   GLint mainShader = shaderCreate("src/shaders/main.vert", "src/shaders/main.frag");
   Model model = modelCreate("src/mesh/models/sword/", &mainShader);
 
@@ -75,7 +73,7 @@ int main() {
     cameraMove(&camera, mouseX, mouseY, width, height);
     cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
 
-    //modelDraw(&model, &camera);
+    modelDraw(&model, &camera);
 
     glfwSwapBuffers(window);
     glfwPollEvents();

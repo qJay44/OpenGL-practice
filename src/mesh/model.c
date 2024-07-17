@@ -8,8 +8,9 @@
 #include "object.h"
 
 #define MODEL_CACHED_TEXTURES_LENGTH 20
+#define VERTEX_ATTRIBUTES 11 // 3 (position) + 3 (normal) + 3 (color) + 2 (texture)
 
-byte* getData(const Model* self) {
+byte* getDataBin(const Model* self) {
   json* buffers;
   json* uri;
   if (!json_object_object_get_ex(self->json, "buffers", &buffers))
@@ -67,7 +68,9 @@ float* getFloats(const Model* self, const json* accessor, u32* outCount) {
   }
 
   u32 beginningOfData = byteOffset + accByteOffset;
-  u32 lengthOfData = count * 4 * numPerVert;
+  u32 lengthCommon = count * 4;
+  u32 lengthOfData = lengthCommon * numPerVert;
+
   float* out = malloc(sizeof(float) * lengthOfData);
 
   for (u32 i = 0; i < lengthOfData; i++) {
@@ -78,13 +81,14 @@ float* getFloats(const Model* self, const json* accessor, u32* outCount) {
     out[i] = value;
   }
 
-  *outCount = lengthOfData;
+  *outCount = lengthCommon;
   return out;
 }
 
 GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
   u32 buffViewInd = 0;
   u32 accByteOffset = 0;
+  u32 byteOffset = 0; // Also not required by GLTF, so it should have 0 as the default value
 
   json* accBufferView;
   if (json_object_object_get_ex(accessor, "bufferView", &accBufferView))
@@ -107,8 +111,8 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
   json* bufferView = json_object_array_get_idx(bufferViews, buffViewInd);
 
   json* jByteOffset;
-  json_object_object_get_ex(bufferView, "byteOffset", &jByteOffset);
-  u32 byteOffset = json_object_get_int(jByteOffset);
+  if (json_object_object_get_ex(bufferView, "byteOffset", &jByteOffset))
+    byteOffset = json_object_get_int(jByteOffset);
 
   u32 beginningOfData = byteOffset + accByteOffset;
 
@@ -119,7 +123,6 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
     // unsigned int
     case 5125:
       outItemsCount = count * 4;
-      // FIXME: crash after malloc()?
       out = malloc(sizeof(GLuint) * outItemsCount);
       for (u32 i = 0; i < outItemsCount; i++) {
         u32 ii = beginningOfData + (i << 2);
@@ -154,45 +157,12 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
       }
       break;
     default:
-      printf("(getIndices) default case occured\n");
+      printf("(getIndices) Unhandled component type\n");
       exit(EXIT_FAILURE);
       break;
   }
 
   *outCount = outItemsCount;
-  return out;
-}
-
-vec2s* getFloatsVec2(const float* vecs, u32 vecsCount) {
-  vec2s* out = malloc(sizeof(vec2s) * vecsCount);
-
-  for (int i = 0; i < vecsCount; i++) {
-    u32 ii = i << 1;
-    out[i] = (vec2s){vecs[ii], vecs[ii + 1]};
-  }
-
-  return out;
-}
-
-vec3s* getFloatsVec3(const float* vecs, u32 vecsCount) {
-  vec3s* out = malloc(sizeof(vec3s) * vecsCount);
-
-  for (int i = 0; i < vecsCount; i++) {
-    u32 ii = i * 3;
-    out[i] = (vec3s){vecs[ii], vecs[ii + 1], vecs[ii + 2]};
-  }
-
-  return out;
-}
-
-vec4s* getFloatsVec4(const float* vecs, u32 vecsCount) {
-  vec4s* out = malloc(sizeof(vec4s) * vecsCount);
-
-  for (int i = 0; i < vecsCount; i++) {
-    u32 ii = i << 2;
-    out[i] = (vec4s){vecs[ii], vecs[ii + 1], vecs[ii + 2], vecs[ii + 3]};
-  }
-
   return out;
 }
 
@@ -250,22 +220,38 @@ void getTextures(Model* self) {
   }
 }
 
-float* assembleVertices(vec3s* positions, u32 positionsCount, vec3s* normals, vec2s* texUVs) {
-  float* vertices = malloc(sizeof(float) * 8 * positionsCount);
+float* assembleVertices(float* positions, float* normals, float* texUVs, u32 count) {
+  float* vertices = malloc(sizeof(float) * VERTEX_ATTRIBUTES * count);
 
-  for (int i = 0; i <= positionsCount; i++) {
-    int ii = i << 3;
+  /* Assuming that:
+     * positions are vec3,
+     * normals are vec3,
+     * texUVs are vec2
+  */
+  for (int i = 0; i < count; i++) {
+    int i11 = i * VERTEX_ATTRIBUTES;
+    int i3 = i * 3;
+    int i2 = i * 2;
 
-    vertices[ii + 0] = positions[i].x;
-    vertices[ii + 1] = positions[i].y;
-    vertices[ii + 2] = positions[i].z;
+    assert(i11 < count * VERTEX_ATTRIBUTES);
+    assert(i3 < count * 3);
+    assert(i2 < count * 2);
 
-    vertices[ii + 3] = normals[i].x;
-    vertices[ii + 4] = normals[i].y;
-    vertices[ii + 5] = normals[i].z;
+    vertices[i11 + 0] = positions[i3 + 0];
+    vertices[i11 + 1] = positions[i3 + 1];
+    vertices[i11 + 2] = positions[i3 + 2];
 
-    vertices[ii + 6] = texUVs[i].x;
-    vertices[ii + 7] = texUVs[i].y;
+    vertices[i11 + 3] = normals[i3 + 0];
+    vertices[i11 + 4] = normals[i3 + 1];
+    vertices[i11 + 5] = normals[i3 + 2];
+
+    // Color
+    vertices[i11 + 6] = 1.f;
+    vertices[i11 + 7] = 1.f;
+    vertices[i11 + 8] = 1.f;
+
+    vertices[i11 + 9]  = texUVs[i2 + 0];
+    vertices[i11 + 10] = texUVs[i2 + 1];
   }
 
   return vertices;
@@ -286,7 +272,7 @@ void loadMesh(Model* self, u32 idxMesh) {
   json* jMesh = json_object_array_get_idx(meshes, idxMesh);
   json* primitives;
   if (!json_object_object_get_ex(jMesh, "primitives", &primitives))
-    printf("Can't get \"uri\" from first buffer\n");
+    printf("Can't get \"primitives\" from json\n");
 
   json* primitive0 = json_object_array_get_idx(primitives, 0);
 
@@ -335,25 +321,23 @@ void loadMesh(Model* self, u32 idxMesh) {
     printf("Can't get \"accessors\" from json\n");
 
   u32 posVecsCount;
-  float* posVecs = getFloats(self, json_object_array_get_idx(accessors, posAccIdx), &posVecsCount);
-  vec3s* positions = getFloatsVec3(posVecs, posVecsCount);
+  float* positions = getFloats(self, json_object_array_get_idx(accessors, posAccIdx), &posVecsCount);
 
   u32 normalVecsCount;
-  float* normalVecs = getFloats(self, json_object_array_get_idx(accessors, normalAccIdx), &normalVecsCount);
-  vec3s* normals = getFloatsVec3(normalVecs, normalVecsCount);
+  float* normals = getFloats(self, json_object_array_get_idx(accessors, normalAccIdx), &normalVecsCount);
 
   u32 texVecsCount;
-  float* texVecs = getFloats(self, json_object_array_get_idx(accessors, texAccIdx), &texVecsCount);
-  vec2s* texUVs = getFloatsVec2(texVecs, texVecsCount);
+  float* texUVs = getFloats(self, json_object_array_get_idx(accessors, texAccIdx), &texVecsCount);
 
-  float* vertices = assembleVertices(positions, posVecsCount, normals, texUVs);
+  assert(posVecsCount == normalVecsCount && normalVecsCount == texVecsCount);
+  float* vertices = assembleVertices(positions, normals, texUVs, posVecsCount);
 
   u32 indicesCount;
   GLuint* indices = getIndices(self, json_object_array_get_idx(accessors, indAccIdx), &indicesCount);
 
   getTextures(self);
 
-  Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * 8, indices, indicesCount * sizeof(GLuint), self->shader);
+  Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * VERTEX_ATTRIBUTES, indices, indicesCount * sizeof(GLuint), self->shader);
   for (int i = 0; i < self->texturesIdx; i++)
     objectAddTexture(&mesh, self->textures[i]);
 
@@ -362,11 +346,8 @@ void loadMesh(Model* self, u32 idxMesh) {
     arrResizeObject(&self->meshes, self->meshesSize, &self->meshesSize);
   self->meshes[self->meshesIdx++] = mesh;
 
-  free(posVecs);
   free(positions);
-  free(normalVecs);
   free(normals);
-  free(texVecs);
   free(texUVs);
 
   // Freeing, because object copies vertices and indices (they can be constructed from stack/heap vertices or indices)
@@ -496,7 +477,7 @@ Model modelCreate(const char* modelDirectory, const GLint* shader) {
   Model model;
   model.dirPath = modelDirectory;
   model.json = json_tokener_parse(buffer);
-  model.data = getData(&model);
+  model.data = getDataBin(&model);
   model.shader = shader;
   model.texturesIdx = 0;
   model.meshesIdx = 0;

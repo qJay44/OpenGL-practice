@@ -43,14 +43,11 @@ typedef struct {
 
 } Model;
 
-[[nodiscard]] static byte* getData(const Model* self);
+[[nodiscard]] static byte* getDataBin(const Model* self);
 [[nodiscard]] static float* getFloats(const Model* self, const json* accessor, u32* outCount);
 [[nodiscard]] static GLuint* getIndices(const Model* self, const json* accessor, u32* outCount);
-[[nodiscard]] static vec2s* getFloatsVec2(const float* vecs, u32 vecsCount);
-[[nodiscard]] static vec3s* getFloatsVec3(const float* vecs, u32 vecsCount);
-[[nodiscard]] static vec4s* getFloatsVec4(const float* vecs, u32 vecsCount);
+[[nodiscard]] static float* assembleVertices(float* positions, float* normals, float* texUVs, u32 count);
 static void getTextures(Model* self);
-[[nodiscard]] static float* assembleVertices(vec3s* positions, u32 positionsCount, vec3s* normals, vec2s* texUVs);
 
 static void loadMesh(Model* self, u32 idxMesh);
 static void traverseNode(Model* self, u32 nextNode, mat4 matrix);
