@@ -1,12 +1,15 @@
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "model.h"
+#include "cglm/io.h"
 #include "cglm/mat4.h"
 #include "cglm/struct/affine-pre.h"
 #include "cglm/types.h"
 #include "cglm/quat.h"
+
+#include "model.h"
 #include "object.h"
 
 #define MODEL_CACHED_TEXTURES_LENGTH 20
@@ -64,7 +67,7 @@ float* getFloats(const Model* self, const json* accessor, u32* outCount) {
   else if (!strcmp(type, "VEC3"))   numPerVert = 3;
   else if (!strcmp(type, "VEC4"))   numPerVert = 4;
   else {
-    printf("Unhandled vertices type (not SCALAR, VEC2, VEC3, or VEC4\n)");
+    printf("Unhandled vertices type (%s)\n", type);
     exit(EXIT_FAILURE);
   }
 
@@ -191,7 +194,7 @@ void getTextures(Model* self) {
 
     bool skip = false;
     for (u32 j = 0; j < cachedTexturesIdx; j++) {
-      if (strcmp(cachedTextures[j].name, uriStr)) {
+      if (!strcmp(cachedTextures[j].name, uriStr)) {
         assert(self->texturesIdx < MODEL_TEXTURES_LENGTH);
         self->textures[self->texturesIdx++] = &cachedTextures[j];
         skip = true;
@@ -207,8 +210,8 @@ void getTextures(Model* self) {
       else if (strstr(uriStr, "metallicRoughness"))
         texType = "specular";
       else {
-        printf("Unhandled texture type\n");
-        exit(EXIT_FAILURE);
+        printf("Unhandled texture type (%s)\n", uriStr);
+        continue;
       }
 
       assert(cachedTexturesIdx < MODEL_CACHED_TEXTURES_LENGTH);
@@ -432,8 +435,8 @@ void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
 
     // Push back rotation
     if (self->rmIdx == self->rmSize / sizeof(self->rotationMeshes[0]))
-      arrResizeVec4s(&self->rotationMeshes, self->rmSize, &self->rmSize);
-    self->rotationMeshes[self->rmIdx++] = (vec4s){rotation[0], rotation[1], rotation[2], rotation[3]};
+      arrResizeVersors(&self->rotationMeshes, self->rmSize, &self->rmSize);
+    self->rotationMeshes[self->rmIdx++] = (versors){rotation[0], rotation[1], rotation[2], rotation[3]};
 
     // Push back scale
     if (self->smIdx == self->smSize / sizeof(self->scaleMeshes[0]))
@@ -487,7 +490,7 @@ Model modelCreate(const char* modelDirectory, const GLint* shader) {
   model.tmSize = sizeof(vec3s);
   model.translationMeshes = malloc(model.tmSize);
   model.rmIdx = 0;
-  model.rmSize = sizeof(vec4s);
+  model.rmSize = sizeof(versors);
   model.rotationMeshes = malloc(model.rmSize);
   model.smIdx = 0;
   model.smSize = sizeof(vec3s);
@@ -504,14 +507,28 @@ Model modelCreate(const char* modelDirectory, const GLint* shader) {
   return model;
 }
 
+void modelScale(Model* self, float scale) {
+  if (self->smIdx == 0)
+    self->scaleMeshes[self->smIdx++] = (vec3s){scale, scale, scale};
+  else
+    for (int i = 0; i < self->smIdx; i++)
+      self->scaleMeshes[i] = glms_vec3_scale(self->scaleMeshes[i], scale);
+}
+
 void modelDraw(const Model* self, const Camera* camera) {
   vec3s translation = {0.f, 0.f, 0.f};
   versors rotation = {0.f, 0.f, 0.f, 1.f};
   vec3s scale = {1.f, 1.f, 1.f};
 
   assert(self->meshesIdx == self->mmIdx);
-  for (int i = 0; i < self->meshesIdx; i++)
+  for (int i = 0; i < self->meshesIdx; i++) {
+    // REVIEW: These meshes probably should be used like that
+    if (self->tmIdx > i) translation = self->translationMeshes[i];
+    if (self->rmIdx > i) rotation = self->rotationMeshes[i];
+    if (self->smIdx > i) scale = self->scaleMeshes[i];
+
     objectDraw(&self->meshes[i], camera, self->matMeshes[i], translation, rotation, scale);
+  }
 }
 
 void modelDelete(Model* self) {

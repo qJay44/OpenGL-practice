@@ -33,8 +33,10 @@ char* readFile(const char* path, bool printContent) {
       while (pathLen--) printf("=");
       printf("\n\n");
     }
-  } else
+  } else {
     printf("File can't be opened: %s\n", path);
+    exit(EXIT_FAILURE);
+  }
 
   fclose(fptr);
   return buffer;
@@ -133,6 +135,17 @@ void arrResizeVec4s(vec4s** arr, size_t oldSize, size_t* outNewSize) {
   vec4s* newArr = malloc(*outNewSize);
 
   for (int i = 0; i < oldSize / sizeof(vec4s); i++)
+    newArr[i] = (*arr)[i];
+
+  free(*arr);
+  *arr = newArr;
+}
+
+void arrResizeVersors(versors** arr, size_t oldSize, size_t* outNewSize) {
+  *outNewSize = oldSize * 2;
+  versors* newArr = malloc(*outNewSize);
+
+  for (int i = 0; i < oldSize / sizeof(versors); i++)
     newArr[i] = (*arr)[i];
 
   free(*arr);

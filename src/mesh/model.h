@@ -29,7 +29,7 @@ typedef struct {
   size_t tmSize;
   u32 tmIdx;
 
-  vec4s* rotationMeshes;
+  versors* rotationMeshes;
   size_t rmSize;
   u32 rmIdx;
 
@@ -55,6 +55,7 @@ static void traverseNode(Model* self, u32 nextNode, mat4 matrix);
 [[nodiscard]]
 Model modelCreate(const char* modelDirectory, const GLint* shader);
 
+void modelScale(Model* self, float scale);
 void modelDraw(const Model* self, const Camera* camera);
 void modelDelete(Model* self);
 

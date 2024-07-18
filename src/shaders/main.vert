@@ -19,7 +19,7 @@ uniform mat4 scale;
 void main() {
   vertPos = vec3(model * translation * -rotation * scale * vec4(pos, 1.f));
   color = col;
-  texCoord = mat2(0.f, -1.f, 1.f, 0.f) * tex; // FIXME: Without multiplication looks better
+  texCoord = mat2(1.f, 0.f, 0.f, -1.f) * tex; // Instead of texCoord = mat2(0.f, -1.f, 1.f, 0.f) * tex;
   vertNormal = normal;
 
   gl_Position = camMat * vec4(vertPos, 1.f);

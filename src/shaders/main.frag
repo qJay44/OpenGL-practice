@@ -80,7 +80,7 @@ vec4 spotLight() {
 }
 
 void main() {
-  //FragColor = directionalLight();
-  FragColor = texture(diffuse0, texCoord);
+  FragColor = directionalLight();
+  //FragColor = texture(diffuse0, texCoord);
 }
 

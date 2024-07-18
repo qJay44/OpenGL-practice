@@ -36,10 +36,10 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
   size_t typeSize = sizeof(GLfloat);
   size_t stride = OBJECT_VERTEX_ATTRIBUTES * typeSize;
 
-  vaoLinkAttrib(0, 3, GL_FLOAT, stride, (void*)(0 * typeSize));
-  vaoLinkAttrib(1, 3, GL_FLOAT, stride, (void*)(3 * typeSize));
-  vaoLinkAttrib(2, 2, GL_FLOAT, stride, (void*)(6 * typeSize));
-  vaoLinkAttrib(3, 3, GL_FLOAT, stride, (void*)(8 * typeSize));
+  vaoLinkAttrib(0, 3, GL_FLOAT, stride, (void*)(0 * typeSize)); // 1. Position
+  vaoLinkAttrib(1, 3, GL_FLOAT, stride, (void*)(3 * typeSize)); // 2. Color
+  vaoLinkAttrib(2, 2, GL_FLOAT, stride, (void*)(6 * typeSize)); // 3. Texture
+  vaoLinkAttrib(3, 3, GL_FLOAT, stride, (void*)(8 * typeSize)); // 4. Normal
 
   // =========================== //
 
@@ -51,7 +51,7 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
   return obj;
 }
 
-Object objectCreatePyramid(const GLint* shader) {
+Object objectCreateTestPyramid(const GLint* shader) {
   // Positions (3), colors (3), texture coords (2), normals (3)
   float vertices[176] = {
     -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,  0.0f, -1.0f, 0.0f, // Bottom side
@@ -143,12 +143,12 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
     u8 uniformStrLength;
     assert(numDiffuse < 256);
 
-    // BUG: the shader has only diffuse0/specular0
-    if (strcmp(texType, "diffuse")) {
+    // REVIEW: The shader has only diffuse0/specular0
+    if (!strcmp(texType, "diffuse")) {
       uniformStrLength = 7 + 3;
       sprintf(numStr, "%d", numDiffuse++);
 
-    } else if (strcmp(texType, "specular")) {
+    } else if (!strcmp(texType, "specular")) {
       uniformStrLength = 8 + 3;
       sprintf(numStr, "%d", numSpecular++);
     }

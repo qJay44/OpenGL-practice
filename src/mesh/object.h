@@ -8,7 +8,7 @@
 #include "ebo.h"
 #include "texture.h"
 
-#define OBJECT_MAX_TEXTURES 0xf
+#define OBJECT_MAX_TEXTURES 0xff
 #define OBJECT_VERTEX_ATTRIBUTES 11 // 3 (position) + 3 (normal) + 3 (color) + 2 (texture)
 
 typedef struct {
@@ -28,7 +28,7 @@ typedef struct {
 } Object;
 
 [[nodiscard]] Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, const GLint* shader);
-[[nodiscard]] Object objectCreatePyramid(const GLint* shader);
+[[nodiscard]] Object objectCreateTestPyramid(const GLint* shader);
 
 void objectAddTexture(Object* self, Texture* tex);
 void objectTranslate(Object* self, vec3s v);

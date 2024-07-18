@@ -15,6 +15,7 @@ void arrResizeUint(u32** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeVec2s(vec2s** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeVec3s(vec3s** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeVec4s(vec4s** arr, size_t oldSize, size_t* outNewSize);
+void arrResizeVersors(versors** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeMat4s(mat4s** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeObject(Object** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeChar(char** arr, size_t oldSize, size_t* outNewSize);
