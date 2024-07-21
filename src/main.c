@@ -56,14 +56,15 @@ int main() {
   };
 
   GLint mainShader = shaderCreate("src/shaders/main.vert", "src/shaders/main.frag");
+  GLint outlineShader = shaderCreate("src/shaders/outline.vert", "src/shaders/outline.frag");
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model ground = modelCreate("src/mesh/models/ground/", &mainShader); // Good
-  Model trees = modelCreate("src/mesh/models/trees/", &mainShader); // Good
-  modelScale(&ground, 0.5f);
-  modelScale(&trees, 0.5f);
+  Model crow = modelCreate("src/mesh/models/crow/");
+  Model crowOutline = modelCreate("src/mesh/models/crow-outline/");
+  modelScale(&crow, 0.25f);
+  modelScale(&crowOutline, 0.25f);
 
-  Object pyramid = objectCreateTestPyramid(&mainShader);
+  Object pyramid = objectCreateTestPyramid();
   objectAddTexture(&pyramid, &defaultTextures[0]);
 
   // ===== Illumination ===== //
@@ -79,8 +80,7 @@ int main() {
 
   // ======================== //
 
-  /* vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f}; */
-  vec3s backgroundColor = (vec3s){0.85f, 0.85f, 0.9f};
+  vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f};
   float nearPlane = 0.1f;
   float farPlane = 100.f;
 
@@ -89,7 +89,8 @@ int main() {
 	glUniform1f(glGetUniformLocation(mainShader, "far"), farPlane);
 
   glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_LESS);
+  glEnable(GL_STENCIL_TEST);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
   double prevTime = glfwGetTime();
 
@@ -107,15 +108,25 @@ int main() {
     prevTime = currTime;
 
     glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     processInput(window, width, height, &camera);
 
     cameraMove(&camera, mouseX, mouseY, width, height);
     cameraUpdate(&camera, 45.f, nearPlane, farPlane, (float)width / height, dt);
 
-    modelDraw(&ground, &camera);
-    modelDraw(&trees, &camera);
+    glStencilFunc(GL_ALWAYS, 1, 0xff);
+    glStencilMask(0xff);
+    modelDraw(&crow, &camera, mainShader);
+
+    glStencilFunc(GL_NOTEQUAL, 1, 0xff);
+    glStencilMask(0x0);
+    glDisable(GL_DEPTH_TEST);
+    modelDraw(&crowOutline, &camera, outlineShader);
+
+    glStencilMask(0xff);
+    glStencilFunc(GL_ALWAYS, 0, 0xff);
+    glEnable(GL_DEPTH_TEST);
 
     /* { */
     /*   mat4s mat = GLMS_MAT4_IDENTITY_INIT; */
@@ -129,7 +140,7 @@ int main() {
     glfwPollEvents();
   }
 
-  modelDelete(&ground);
+  modelDelete(&crow);
   glDeleteProgram(mainShader);
   glfwTerminate();
 

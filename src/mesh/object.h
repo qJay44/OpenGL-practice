@@ -17,7 +17,6 @@ typedef struct {
   GLuint* indices;
   size_t indSize;
 
-  const GLint* shaderProgram;
   struct VAO vao;
   struct VBO vbo;
   struct EBO ebo;
@@ -27,17 +26,17 @@ typedef struct {
   u32 texsCount;
 } Object;
 
-[[nodiscard]] Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, const GLint* shader);
-[[nodiscard]] Object objectCreateTestPyramid(const GLint* shader);
+[[nodiscard]] Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize);
+[[nodiscard]] Object objectCreateTestPyramid(void);
 
 void objectAddTexture(Object* self, Texture* tex);
 void objectTranslate(Object* self, vec3s v);
-void objectSetMatrixUniform(const Object* self, const char* name);
-void objectSetVec3Unifrom(const Object* self, const char* name, vec3s v);
-void objectSetVec4Unifrom(const Object* self, const char* name, vec4s v);
-void objectSetTextureUnifrom(const Object* self, const char* name, GLuint slot);
-void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name);
-void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, versors rotation, vec3s scale);
+void objectSetMatrixUniform(const Object* self, const char* name, GLint shader);
+void objectSetVec3Unifrom(const Object* self, const char* name, GLint shader, vec3s v);
+void objectSetVec4Unifrom(const Object* self, const char* name, GLint shader, vec4s v);
+void objectSetTextureUnifrom(const Object* self, const char* name, GLint shader, GLuint slot);
+void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name, GLint shader);
+void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, versors rotation, vec3s scale, GLint shader);
 void objectDelete(Object* self);
 
 #endif

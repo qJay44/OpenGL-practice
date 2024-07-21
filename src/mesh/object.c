@@ -10,7 +10,7 @@
 #include "vao.h"
 #include "object.h"
 
-Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, const GLint* shader) {
+Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize) {
   Object obj = {
     .vertices = malloc(vertSize),
     .vertSize = vertSize,
@@ -21,7 +21,6 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
     .vbo = vboCreate(1),
     .ebo = eboCreate(1),
     .texsCount = 0,
-    .shaderProgram = shader
   };
   memcpy((void*)obj.vertices, (void*)vertices, vertSize);
   memcpy((void*)obj.indices, (void*)indices, indSize);
@@ -51,7 +50,7 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
   return obj;
 }
 
-Object objectCreateTestPyramid(const GLint* shader) {
+Object objectCreateTestPyramid(void) {
   // Positions (3), colors (3), texture coords (2), normals (3)
   float vertices[176] = {
     -0.5f, 0.0f,  0.5f,  0.83f, 0.70f, 0.44f,  0.0f, 0.0f,  0.0f, -1.0f, 0.0f, // Bottom side
@@ -85,7 +84,7 @@ Object objectCreateTestPyramid(const GLint* shader) {
     13, 15, 14  // Facing side
   };
 
-  return objectCreate(vertices, sizeof(float) * 176, indices, sizeof(GLuint) * 18, shader);
+  return objectCreate(vertices, sizeof(float) * 176, indices, sizeof(GLuint) * 18);
 }
 
 
@@ -100,38 +99,38 @@ void objectTranslate(Object* self, vec3s v) {
   self->mat = glms_translate(self->mat, v);
 }
 
-void objectSetMatrixUniform(const Object* self, const char* name) {
-  glUseProgram(*self->shaderProgram);
-  GLint loc = glGetUniformLocation(*self->shaderProgram, name);
+void objectSetMatrixUniform(const Object* self, const char* name, GLint shader) {
+  glUseProgram(shader);
+  GLint loc = glGetUniformLocation(shader, name);
   glUniformMatrix4fv(loc, 1, GL_FALSE, (const GLfloat*)&self->mat.raw);
 }
 
-void objectSetVec3Unifrom(const Object* self, const char* name, vec3s v) {
-  glUseProgram(*self->shaderProgram);
-  GLint loc = glGetUniformLocation(*self->shaderProgram, name);
+void objectSetVec3Unifrom(const Object* self, const char* name, GLint shader, vec3s v) {
+  glUseProgram(shader);
+  GLint loc = glGetUniformLocation(shader, name);
   glUniform3f(loc, v.x, v.y, v.z);
 }
 
-void objectSetVec4Unifrom(const Object* self, const char* name, vec4s v) {
-  glUseProgram(*self->shaderProgram);
-  GLint loc = glGetUniformLocation(*self->shaderProgram, name);
+void objectSetVec4Unifrom(const Object* self, const char* name, GLint shader, vec4s v) {
+  glUseProgram(shader);
+  GLint loc = glGetUniformLocation(shader, name);
   glUniform4f(loc, v.x, v.y, v.z, v.w);
 }
 
-void objectSetTextureUnifrom(const Object* self, const char* name, GLuint slot) {
-  glUseProgram(*self->shaderProgram);
-  GLuint uniTex = glGetUniformLocation(*self->shaderProgram, name);
+void objectSetTextureUnifrom(const Object* self, const char* name, GLint shader, GLuint slot) {
+  glUseProgram(shader);
+  GLuint uniTex = glGetUniformLocation(shader, name);
   glUniform1i(uniTex, slot);
 }
 
-void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name) {
-  glUseProgram(*self->shaderProgram);
-  GLint loc = glGetUniformLocation(*self->shaderProgram, name);
+void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name, GLint shader) {
+  glUseProgram(shader);
+  GLint loc = glGetUniformLocation(shader, name);
   glUniformMatrix4fv(loc, 1, GL_FALSE, mat);
 }
 
-void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, versors rotation, vec3s scale) {
-  glUseProgram(*self->shaderProgram);
+void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, versors rotation, vec3s scale, GLint shader) {
+  glUseProgram(shader);
   vaoBind(&self->vao);
 
   u8 numDiffuse = 0;
@@ -156,12 +155,12 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
     char uniform[uniformStrLength + 1];
     concat(texType, numStr, uniform, uniformStrLength * sizeof(char));
 
-    textureUnit(self->shaderProgram, uniform, i);
+    textureUnit(shader, uniform, i);
     textureBind(self->textures[i]);
   }
 
-  objectSetVec3Unifrom(self, "camPos", camera->position);
-  objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "camMat");
+  objectSetVec3Unifrom(self, "camPos", shader, camera->position);
+  objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "camMat", shader);
 
   mat4s trans = GLMS_MAT4_IDENTITY_INIT;
   mat4s rot = GLMS_MAT4_IDENTITY_INIT;
@@ -171,10 +170,10 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
   glm_quat_mat4(rotation.raw, rot.raw);
   glm_scale(sca.raw, scale.raw);
 
-  glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "translation"), 1, GL_FALSE, (const GLfloat*)trans.raw);
-  glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "rotation"), 1, GL_FALSE, (const GLfloat*)rot.raw);
-  glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "scale"), 1, GL_FALSE, (const GLfloat*)sca.raw);
-  glUniformMatrix4fv(glGetUniformLocation(*self->shaderProgram, "model"), 1, GL_FALSE, (const GLfloat*)matrix.raw);
+  glUniformMatrix4fv(glGetUniformLocation(shader, "translation"), 1, GL_FALSE, (const GLfloat*)trans.raw);
+  glUniformMatrix4fv(glGetUniformLocation(shader, "rotation"), 1, GL_FALSE, (const GLfloat*)rot.raw);
+  glUniformMatrix4fv(glGetUniformLocation(shader, "scale"), 1, GL_FALSE, (const GLfloat*)sca.raw);
+  glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, (const GLfloat*)matrix.raw);
 
   glDrawElements(GL_TRIANGLES, self->indSize / sizeof(self->indices[0]), GL_UNSIGNED_INT, 0);
   vaoUnbind();

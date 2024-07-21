@@ -3,9 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cglm/io.h"
 #include "cglm/mat4.h"
-#include "cglm/struct/affine-pre.h"
+#include "cglm/struct/vec3.h"
 #include "cglm/types.h"
 #include "cglm/quat.h"
 
@@ -341,7 +340,7 @@ void loadMesh(Model* self, u32 idxMesh) {
 
   getTextures(self);
 
-  Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * OBJECT_VERTEX_ATTRIBUTES, indices, indicesCount * sizeof(GLuint), self->shader);
+  Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * OBJECT_VERTEX_ATTRIBUTES, indices, indicesCount * sizeof(GLuint));
   for (int i = 0; i < self->texturesIdx; i++)
     objectAddTexture(&mesh, self->textures[i]);
 
@@ -466,7 +465,7 @@ void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
   }
 }
 
-Model modelCreate(const char* modelDirectory, const GLint* shader) {
+Model modelCreate(const char* modelDirectory) {
   static const char* sceneGLTF = "scene.gltf";
 
   // Folder + file
@@ -481,7 +480,6 @@ Model modelCreate(const char* modelDirectory, const GLint* shader) {
   model.dirPath = modelDirectory;
   model.json = json_tokener_parse(buffer);
   model.data = getDataBin(&model);
-  model.shader = shader;
   model.texturesIdx = 0;
   model.meshesIdx = 0;
   model.meshesSize = sizeof(Object);
@@ -515,7 +513,7 @@ void modelScale(Model* self, float scale) {
       self->scaleMeshes[i] = glms_vec3_scale(self->scaleMeshes[i], scale);
 }
 
-void modelDraw(const Model* self, const Camera* camera) {
+void modelDraw(const Model* self, const Camera* camera, GLint shader) {
   vec3s translation = {0.f, 0.f, 0.f};
   versors rotation = {0.f, 0.f, 0.f, 1.f};
   vec3s scale = {1.f, 1.f, 1.f};
@@ -527,7 +525,7 @@ void modelDraw(const Model* self, const Camera* camera) {
     if (self->rmIdx > i) rotation = self->rotationMeshes[i];
     if (self->smIdx > i) scale = self->scaleMeshes[i];
 
-    objectDraw(&self->meshes[i], camera, self->matMeshes[i], translation, rotation, scale);
+    objectDraw(&self->meshes[i], camera, self->matMeshes[i], translation, rotation, scale, shader);
   }
 }
 

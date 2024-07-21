@@ -16,7 +16,6 @@ typedef struct {
   const char* dirPath;
   json* json;
   byte* data;
-  const GLint* shader;
 
   Texture* textures[MODEL_TEXTURES_LENGTH];
   u32 texturesIdx;
@@ -53,10 +52,10 @@ static void loadMesh(Model* self, u32 idxMesh);
 static void traverseNode(Model* self, u32 nextNode, mat4 matrix);
 
 [[nodiscard]]
-Model modelCreate(const char* modelDirectory, const GLint* shader);
+Model modelCreate(const char* modelDirectory);
 
 void modelScale(Model* self, float scale);
-void modelDraw(const Model* self, const Camera* camera);
+void modelDraw(const Model* self, const Camera* camera, GLint shader);
 void modelDelete(Model* self);
 
 #endif

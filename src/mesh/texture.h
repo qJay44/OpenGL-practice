@@ -12,7 +12,7 @@ typedef struct {
 Texture textureCreate(const char* path, const char* type);
 void textureBind(const Texture* self);
 void textureUnbind(GLenum texType);
-void textureUnit(const GLint* shader, const char* uniform, GLuint unit);
+void textureUnit(GLint shader, const char* uniform, GLuint unit);
 void textureDelete(Texture* self, GLsizei num);
 
 #endif
