@@ -58,17 +58,10 @@ int main() {
   GLint mainShader = shaderCreate("src/shaders/main.vert", "src/shaders/main.frag");
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model sword = modelCreate("src/mesh/models/sword/", &mainShader); // Good
-  /* Model scroll = modelCreate("src/mesh/models/scoll/", &mainShader); */ // Good
-  /* Model map = modelCreate("src/mesh/models/map/", &mainShader); */ // Good
-  /* Model grindstone = modelCreate("src/mesh/models/grindstone/", &mainShader); */ // Bad: uses normal texture type (not implemented), also looks messed up
-  /* Model bunny = modelCreate("src/mesh/models/bunny/", &mainShader); // Good */
-
-  modelScale(&sword, 0.1f);
-  /* modelScale(&scroll, 0.1f); */
-  /* modelScale(&map, 1.f); */
-  /* modelScale(&grindstone, 0.01f); */
-  /* modelScale(&bunny, 1.f); */
+  Model ground = modelCreate("src/mesh/models/ground/", &mainShader); // Good
+  Model trees = modelCreate("src/mesh/models/trees/", &mainShader); // Good
+  modelScale(&ground, 0.5f);
+  modelScale(&trees, 0.5f);
 
   Object pyramid = objectCreateTestPyramid(&mainShader);
   objectAddTexture(&pyramid, &defaultTextures[0]);
@@ -86,7 +79,17 @@ int main() {
 
   // ======================== //
 
+  /* vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f}; */
+  vec3s backgroundColor = (vec3s){0.85f, 0.85f, 0.9f};
+  float nearPlane = 0.1f;
+  float farPlane = 100.f;
+
+	glUniform3f(glGetUniformLocation(mainShader, "background"), backgroundColor.x, backgroundColor.y, backgroundColor.z);
+	glUniform1f(glGetUniformLocation(mainShader, "near"), nearPlane);
+	glUniform1f(glGetUniformLocation(mainShader, "far"), farPlane);
+
   glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
 
   double prevTime = glfwGetTime();
 
@@ -103,33 +106,30 @@ int main() {
     double dt = currTime - prevTime;
     prevTime = currTime;
 
-    glClearColor(0.07f, 0.13f, 0.17f, 1.f);
+    glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     processInput(window, width, height, &camera);
 
     cameraMove(&camera, mouseX, mouseY, width, height);
-    cameraUpdate(&camera, 45.f, 0.1f, 100.f, (float)width / height, dt);
+    cameraUpdate(&camera, 45.f, nearPlane, farPlane, (float)width / height, dt);
 
-    modelDraw(&sword, &camera);
-    /* modelDraw(&scroll, &camera); */
-    /* modelDraw(&map, &camera); */
-    /* modelDraw(&grindstone, &camera); */
-    /* modelDraw(&bunny, &camera); */
+    modelDraw(&ground, &camera);
+    modelDraw(&trees, &camera);
 
-    {
-      mat4s mat = GLMS_MAT4_IDENTITY_INIT;
-      vec3s trans = (vec3s){0.f, 0.f, 0.f};
-      versors rot = (versors){0.f, 0.f, 0.f, 1.f};
-      vec3s sca = (vec3s){1.f, 1.f, 1.f};
-      objectDraw(&pyramid, &camera, mat, trans, rot, sca);
-    }
+    /* { */
+    /*   mat4s mat = GLMS_MAT4_IDENTITY_INIT; */
+    /*   vec3s trans = (vec3s){0.f, 0.f, 0.f}; */
+    /*   versors rot = (versors){0.f, 0.f, 0.f, 1.f}; */
+    /*   vec3s sca = (vec3s){1.f, 1.f, 1.f}; */
+    /*   objectDraw(&pyramid, &camera, mat, trans, rot, sca); */
+    /* } */
 
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
-  modelDelete(&sword);
+  modelDelete(&ground);
   glDeleteProgram(mainShader);
   glfwTerminate();
 

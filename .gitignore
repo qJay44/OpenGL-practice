@@ -1,3 +1,4 @@
 .cache/
 Build/
 src/textures/
+src/mesh/models/

@@ -7,6 +7,9 @@ in vec2 texCoord;
 in vec3 vertNormal;
 in vec3 vertPos;
 
+uniform vec3 background;
+uniform float near;
+uniform float far;
 uniform sampler2D diffuse0;
 uniform sampler2D specular0;
 uniform vec4 lightColor;
@@ -79,8 +82,20 @@ vec4 spotLight() {
   return (diffuse0Col + specular0Col) * lightColor;
 }
 
+float linearizeDepth(float depth) {
+	return (2.f * near * far) / (far + near - (depth * 2.f - 1.f) * (far - near));
+}
+
+float logisticDepth(float depth) {
+  float steepness = 0.5f;
+  float offset = 5.f;
+  float zVal = linearizeDepth(depth);
+
+  return (1.f / (1.f + exp(-steepness * (zVal - offset))));
+}
+
 void main() {
-  FragColor = directionalLight();
-  //FragColor = texture(diffuse0, texCoord);
+  float depth = logisticDepth(gl_FragCoord.z);
+  FragColor = directionalLight() * (1.f - depth) + vec4(depth * background, 1.f);
 }
 

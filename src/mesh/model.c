@@ -205,9 +205,9 @@ void getTextures(Model* self) {
     if (!skip) {
       char* texType;
 
-      if (strstr(uriStr, "baseColor"))
+      if (strstr(uriStr, "baseColor") || strstr(uriStr, "diffuse"))
         texType = "diffuse";
-      else if (strstr(uriStr, "metallicRoughness"))
+      else if (strstr(uriStr, "metallicRoughness") || strstr(uriStr, "specular"))
         texType = "specular";
       else {
         printf("Unhandled texture type (%s)\n", uriStr);
