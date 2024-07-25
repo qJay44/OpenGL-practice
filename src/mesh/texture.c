@@ -28,7 +28,9 @@ Texture textureCreate(const char* path, const char* type) {
     case 3: imgChannel = GL_RGB; break;
     case 4: imgChannel = GL_RGBA; break;
     default:
-      printf("Unhandled texture image color channels type\n");
+      printf("Unhandled texture image color channels type (%d)\n", imgChannel);
+      printf("Path: %s\n", path);
+      printf("stbi_failure_reason: %s\n", stbi_failure_reason());
       exit(EXIT_FAILURE);
   }
 

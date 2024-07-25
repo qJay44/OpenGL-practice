@@ -11,6 +11,7 @@
 #include "mesh/texture.h"
 #include "inputs.h"
 #include "camera.h"
+#include "utils.h"
 
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -49,20 +50,16 @@ int main() {
   glViewport(0, 0, 1200, 720);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
-  Texture defaultTextures[4] = {
+  Texture defaultTextures[] = {
     textureCreate("src/textures/brick.png", "diffuse"),
-    textureCreate("src/textures/planks.png", "diffuse"),
-    textureCreate("src/textures/planksSpeck.png", "diffuse"),
   };
 
   GLint mainShader = shaderCreate("src/shaders/main.vert", "src/shaders/main.frag");
   GLint outlineShader = shaderCreate("src/shaders/outline.vert", "src/shaders/outline.frag");
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model crow = modelCreate("src/mesh/models/crow/");
-  Model crowOutline = modelCreate("src/mesh/models/crow-outline/");
-  modelScale(&crow, 0.25f);
-  modelScale(&crowOutline, 0.25f);
+  Model model = modelCreate("src/mesh/models/statue/");
+  /* modelScale(&model, 0.25f); */
 
   Object pyramid = objectCreateTestPyramid();
   objectAddTexture(&pyramid, &defaultTextures[0]);
@@ -89,10 +86,15 @@ int main() {
 	glUniform1f(glGetUniformLocation(mainShader, "far"), farPlane);
 
   glEnable(GL_DEPTH_TEST);
-  glEnable(GL_STENCIL_TEST);
-  glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
-  double prevTime = glfwGetTime();
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_FRONT);
+  glFrontFace(GL_CW);
+
+  double titleTimer = glfwGetTime();
+  double prevTime = titleTimer;
+  double currTime = prevTime;
+  double dt;
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -103,9 +105,25 @@ int main() {
     glfwGetCursorPos(window, &mouseX, &mouseY);
     glfwSetCursorPos(window, width * 0.5f, height * 0.5f);
 
-    double currTime = glfwGetTime();
-    double dt = currTime - prevTime;
+    currTime = glfwGetTime();
+    dt = currTime - prevTime;
     prevTime = currTime;
+
+    // Update window title every 0.3 seconds
+    if (glfwGetTime() - titleTimer >= 0.3) {
+      char fpsStr[256];
+      char dtStr[256];
+      char title[256];
+      u16 fps = 1. / dt;
+      sprintf(fpsStr, "%d", fps);
+      sprintf(dtStr, "%f", dt);
+      concat("FPS: ", fpsStr, title, 256);
+      concat(title, " / ", title, 256);
+      concat(title, dtStr, title, 256);
+      concat(title, " ms", title, 256);
+      glfwSetWindowTitle(window, title);
+      titleTimer = glfwGetTime();
+    }
 
     glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -115,18 +133,7 @@ int main() {
     cameraMove(&camera, mouseX, mouseY, width, height);
     cameraUpdate(&camera, 45.f, nearPlane, farPlane, (float)width / height, dt);
 
-    glStencilFunc(GL_ALWAYS, 1, 0xff);
-    glStencilMask(0xff);
-    modelDraw(&crow, &camera, mainShader);
-
-    glStencilFunc(GL_NOTEQUAL, 1, 0xff);
-    glStencilMask(0x0);
-    glDisable(GL_DEPTH_TEST);
-    modelDraw(&crowOutline, &camera, outlineShader);
-
-    glStencilMask(0xff);
-    glStencilFunc(GL_ALWAYS, 0, 0xff);
-    glEnable(GL_DEPTH_TEST);
+    modelDraw(&model, &camera, mainShader);
 
     /* { */
     /*   mat4s mat = GLMS_MAT4_IDENTITY_INIT; */
@@ -140,7 +147,7 @@ int main() {
     glfwPollEvents();
   }
 
-  modelDelete(&crow);
+  modelDelete(&model);
   glDeleteProgram(mainShader);
   glfwTerminate();
 

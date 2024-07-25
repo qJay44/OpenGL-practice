@@ -42,8 +42,9 @@ char* readFile(const char* path, bool printContent) {
   return buffer;
 }
 
-byte* readFileBytes(const char* path) {
+byte* readFileBytes(const char* path, size_t* outSize) {
   FILE* fptr;
+  size_t size = 0;
   u32 itemsCount = 0xff;
   byte* buffer = malloc(sizeof(byte) * itemsCount);
 
@@ -54,20 +55,30 @@ byte* readFileBytes(const char* path) {
 
     while (!feof(fptr)) {
       if (i == itemsCount) {
-        size_t sz = sizeof(byte) * itemsCount;
-        arrResizeByte(&buffer, sz, &sz);
-        itemsCount = sz / sizeof(byte);
+        size = sizeof(byte) * itemsCount;
+        arrResizeByte(&buffer, size, &size);
+        itemsCount = size / sizeof(byte);
       }
       buffer[i++] = fgetc(fptr);
     }
 
-    // Crop at the last element
-    size_t sz = sizeof(byte) * i;
-    arrResizeByte(&buffer, sz, &sz);
+    // Set the exact size of the array //
+
+    size = sizeof(byte) * i;
+    byte* newArr = malloc(size);
+
+    for (int j = 0; j < i; j++)
+      newArr[j] = buffer[j];
+
+    free(buffer);
+    buffer = newArr;
+
+    /////////////////////////////////////
   } else
     printf("File can't be opened: %s\n", path);
 
   fclose(fptr);
+  *outSize = size;
   return buffer;
 
 }

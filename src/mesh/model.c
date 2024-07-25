@@ -13,7 +13,7 @@
 
 #define MODEL_CACHED_TEXTURES_LENGTH 20
 
-byte* getDataBin(const Model* self) {
+byte* getDataBin(const Model* self, size_t* outSize) {
   json* buffers;
   json* uri;
   if (!json_object_object_get_ex(self->json, "buffers", &buffers))
@@ -29,7 +29,7 @@ byte* getDataBin(const Model* self) {
   char path[pathLength];
   concat(self->dirPath, uriStr, path, sizeof(char) * pathLength);
 
-  return readFileBytes(path);
+  return readFileBytes(path, outSize);
 }
 
 float* getFloats(const Model* self, const json* accessor, u32* outCount) {
@@ -71,27 +71,26 @@ float* getFloats(const Model* self, const json* accessor, u32* outCount) {
   }
 
   u32 beginningOfData = byteOffset + accByteOffset;
-  u32 lengthCommon = count * 4;
-  u32 lengthOfData = lengthCommon * numPerVert;
+  u32 lengthOfData = count * numPerVert;
 
   float* out = malloc(sizeof(float) * lengthOfData);
-
   for (u32 i = 0; i < lengthOfData; i++) {
     u32 ii = beginningOfData + (i << 2);
+    assert(ii + 3 < self->dataSize / sizeof(self->data[0]));
     byte bytes[4] = {self->data[ii], self->data[ii + 1], self->data[ii + 2], self->data[ii + 3]};
     float value;
     memcpy(&value, bytes, sizeof(float));
     out[i] = value;
   }
 
-  *outCount = lengthCommon;
+  *outCount = count;
   return out;
 }
 
 GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
   u32 buffViewInd = 0;
   u32 accByteOffset = 0;
-  u32 byteOffset = 0; // Also not required by GLTF, so it should have 0 as the default value
+  u32 byteOffset = 0;
 
   json* accBufferView;
   if (json_object_object_get_ex(accessor, "bufferView", &accBufferView))
@@ -118,17 +117,14 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
     byteOffset = json_object_get_int(jByteOffset);
 
   u32 beginningOfData = byteOffset + accByteOffset;
-
-  u32 outItemsCount;
-  GLuint* out;
+  GLuint* out = malloc(sizeof(GLuint) * count);
 
   switch (componentType) {
     // unsigned int
     case 5125:
-      outItemsCount = count * 4;
-      out = malloc(sizeof(GLuint) * outItemsCount);
-      for (u32 i = 0; i < outItemsCount; i++) {
+      for (u32 i = 0; i < count; i++) {
         u32 ii = beginningOfData + (i << 2);
+        assert(ii + 3 < self->dataSize / sizeof(self->data[0]));
         byte bytes[4] = {self->data[ii], self->data[ii + 1], self->data[ii + 2], self->data[ii + 3]};
         u32 value;
         memcpy(&value, bytes, sizeof(u32));
@@ -137,10 +133,9 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
       break;
     // unsigned short
     case 5123:
-      outItemsCount = count * 2;
-      out = malloc(sizeof(GLuint) * outItemsCount);
-      for (u32 i = 0; i < outItemsCount; i++) {
+      for (u32 i = 0; i < count; i++) {
         u32 ii = beginningOfData + (i << 1);
+        assert(ii + 1 < self->dataSize / sizeof(self->data[0]));
         byte bytes[2] = {self->data[ii], self->data[ii + 1]};
         unsigned short value;
         memcpy(&value, bytes, sizeof(unsigned short));
@@ -149,10 +144,9 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
       break;
     // short
     case 5122:
-      outItemsCount = count * 2;
-      out = malloc(sizeof(GLuint) * outItemsCount);
-      for (u32 i = 0; i < outItemsCount; i++) {
+      for (u32 i = 0; i < count; i++) {
         u32 ii = beginningOfData + (i << 1);
+        assert(ii + 1 < self->dataSize / sizeof(self->data[0]));
         byte bytes[2] = {self->data[ii], self->data[ii + 1]};
         short value;
         memcpy(&value, bytes, sizeof(short));
@@ -165,7 +159,7 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
       break;
   }
 
-  *outCount = outItemsCount;
+  *outCount = count;
   return out;
 }
 
@@ -479,7 +473,7 @@ Model modelCreate(const char* modelDirectory) {
   Model model;
   model.dirPath = modelDirectory;
   model.json = json_tokener_parse(buffer);
-  model.data = getDataBin(&model);
+  model.data = getDataBin(&model, &model.dataSize);
   model.texturesIdx = 0;
   model.meshesIdx = 0;
   model.meshesSize = sizeof(Object);

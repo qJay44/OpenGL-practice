@@ -16,6 +16,7 @@ typedef struct {
   const char* dirPath;
   json* json;
   byte* data;
+  size_t dataSize;
 
   Texture* textures[MODEL_TEXTURES_LENGTH];
   u32 texturesIdx;
@@ -42,7 +43,7 @@ typedef struct {
 
 } Model;
 
-[[nodiscard]] static byte* getDataBin(const Model* self);
+[[nodiscard]] static byte* getDataBin(const Model* self, size_t* outSize);
 [[nodiscard]] static float* getFloats(const Model* self, const json* accessor, u32* outCount);
 [[nodiscard]] static GLuint* getIndices(const Model* self, const json* accessor, u32* outCount);
 [[nodiscard]] static float* assembleVertices(float* positions, float* normals, float* texUVs, u32 count);

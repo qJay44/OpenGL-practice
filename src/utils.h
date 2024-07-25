@@ -5,7 +5,7 @@
 #include "mesh/object.h"
 
 [[nodiscard]] char* readFile(const char* path, bool printContent);
-[[nodiscard]] byte* readFileBytes(const char* path);
+[[nodiscard]] byte* readFileBytes(const char* path, size_t* outSize);
 [[nodiscard]] char* getFileNameFromPath(const char* path);
 
 void concat(const char* s1, const char* s2, char* out, size_t outSize);
