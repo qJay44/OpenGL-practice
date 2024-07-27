@@ -523,6 +523,12 @@ void modelDraw(const Model* self, const Camera* camera, GLint shader) {
   }
 }
 
+void modelDrawTRC(const Model* self, const Camera* camera, GLint shader, vec3s translation, versors rotation, vec3s scale) {
+  assert(self->meshesIdx == self->mmIdx);
+  for (int i = 0; i < self->meshesIdx; i++)
+    objectDraw(&self->meshes[i], camera, self->matMeshes[i], translation, rotation, scale, shader);
+}
+
 void modelDelete(Model* self) {
   free(self->data);
   json_object_put(self->json);

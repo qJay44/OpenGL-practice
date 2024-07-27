@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <windows.h>
 
 #include "cglm/struct/affine-pre.h"
@@ -13,6 +15,21 @@
 #include "camera.h"
 #include "utils.h"
 
+#define NUM_WINDOWS 100
+
+// The information about the windows
+vec3s positionsWin[NUM_WINDOWS];
+float rotationsWin[NUM_WINDOWS];
+
+// The order of drawing the windows
+u32 orderDraw[NUM_WINDOWS];
+float distanceCamera[NUM_WINDOWS];
+
+int compare(const void* a, const void* b) {
+  double diff = distanceCamera[*(int*)b] - distanceCamera[*(int*)a];
+  return (0. < diff) - (diff < 0.);
+}
+
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
   glViewport(0, 0, width, height);
@@ -20,8 +37,9 @@ void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 int main() {
-  // Change cwd where "src" directory located
+  // Change cwd to where "src" directory located (since launching the executable always from the directory where its located)
   SetCurrentDirectory("../../../");
+  srand(time(NULL));
 
   // GLFW init
   glfwInit();
@@ -55,11 +73,16 @@ int main() {
   };
 
   GLint mainShader = shaderCreate("src/shaders/main.vert", "src/shaders/main.frag");
-  GLint outlineShader = shaderCreate("src/shaders/outline.vert", "src/shaders/outline.frag");
+  GLint grassShader = shaderCreate("src/shaders/main.vert", "src/shaders/grass.frag");
+  GLint windowsShader = shaderCreate("src/shaders/main.vert", "src/shaders/windows.frag");
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model model = modelCreate("src/mesh/models/statue/");
-  /* modelScale(&model, 0.25f); */
+  Model ground = modelCreate("src/mesh/models/ground/");
+  Model grass = modelCreate("src/mesh/models/grass/");
+  Model windows = modelCreate("src/mesh/models/windows/");
+  modelScale(&ground, 0.5f);
+  modelScale(&grass, 0.5f);
+  modelScale(&windows, 0.5f);
 
   Object pyramid = objectCreateTestPyramid();
   objectAddTexture(&pyramid, &defaultTextures[0]);
@@ -74,6 +97,9 @@ int main() {
   glUseProgram(mainShader);
 	glUniform4f(glGetUniformLocation(mainShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(mainShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+  glUseProgram(grassShader);
+	glUniform4f(glGetUniformLocation(grassShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(grassShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
   // ======================== //
 
@@ -85,11 +111,32 @@ int main() {
 	glUniform1f(glGetUniformLocation(mainShader, "near"), nearPlane);
 	glUniform1f(glGetUniformLocation(mainShader, "far"), farPlane);
 
+  glUseProgram(grassShader);
+	glUniform4f(glGetUniformLocation(grassShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(grassShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+
+  glUseProgram(grassShader);
+	glUniform4f(glGetUniformLocation(grassShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(grassShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+
   glEnable(GL_DEPTH_TEST);
 
   glEnable(GL_CULL_FACE);
   glCullFace(GL_FRONT);
   glFrontFace(GL_CW);
+
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  // Windows init
+  for (int i = 0; i < NUM_WINDOWS; i++) {
+    positionsWin[i] = (vec3s) {
+      -15.f + rand() / (RAND_MAX / 30.f),
+      1.f + rand() / (RAND_MAX / 3.f),
+      -15.f + rand() / (RAND_MAX / 30.f)
+    };
+    rotationsWin[i] = (float)rand() / RAND_MAX;
+    orderDraw[i] = i;
+  }
 
   double titleTimer = glfwGetTime();
   double prevTime = titleTimer;
@@ -133,7 +180,31 @@ int main() {
     cameraMove(&camera, mouseX, mouseY, width, height);
     cameraUpdate(&camera, 45.f, nearPlane, farPlane, (float)width / height, dt);
 
-    modelDraw(&model, &camera, mainShader);
+    // Get distance from each window to the camera
+    for (int i = 0; i < NUM_WINDOWS; i++)
+      distanceCamera[i] = glms_vec3_norm(glms_vec3_sub(camera.position, positionsWin[i]));
+
+    qsort(orderDraw, NUM_WINDOWS, sizeof(u32), compare);
+
+    modelDraw(&ground, &camera, mainShader);
+
+    // Disable cull face so the grass and windows have both faces
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    modelDraw(&grass, &camera, grassShader);
+    for (int i = 0; i < NUM_WINDOWS; i++) {
+      modelDrawTRC(
+        &windows,
+        &camera,
+        windowsShader,
+        positionsWin[orderDraw[i]],
+        (versors){0.f, 0.f, rotationsWin[orderDraw[i]], 1.f},
+        (vec3s){1.f, 1.f, 1.f}
+      );
+    }
+    // Use blending only for windows
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
 
     /* { */
     /*   mat4s mat = GLMS_MAT4_IDENTITY_INIT; */
@@ -147,8 +218,13 @@ int main() {
     glfwPollEvents();
   }
 
-  modelDelete(&model);
+  modelDelete(&ground);
+  modelDelete(&grass);
+  modelDelete(&windows);
   glDeleteProgram(mainShader);
+  glDeleteProgram(grassShader);
+  glDeleteProgram(windowsShader);
+
   glfwTerminate();
 
   printf("Done\n");

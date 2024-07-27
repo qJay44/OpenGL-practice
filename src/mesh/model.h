@@ -57,6 +57,7 @@ Model modelCreate(const char* modelDirectory);
 
 void modelScale(Model* self, float scale);
 void modelDraw(const Model* self, const Camera* camera, GLint shader);
+void modelDrawTRC(const Model* self, const Camera* camera, GLint shader, vec3s translation, versors rotation, vec3s scale);
 void modelDelete(Model* self);
 
 #endif
