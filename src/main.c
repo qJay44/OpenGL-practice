@@ -11,35 +11,26 @@
 #include "mesh/shader.h"
 #include "mesh/model.h"
 #include "mesh/texture.h"
+#include "window.h"
 #include "inputs.h"
 #include "camera.h"
 #include "utils.h"
-
-#define NUM_WINDOWS 100
-
-// The information about the windows
-vec3s positionsWin[NUM_WINDOWS];
-float rotationsWin[NUM_WINDOWS];
-
-// The order of drawing the windows
-u32 orderDraw[NUM_WINDOWS];
-float distanceCamera[NUM_WINDOWS];
-
-int compare(const void* a, const void* b) {
-  double diff = distanceCamera[*(int*)b] - distanceCamera[*(int*)a];
-  return (0. < diff) - (diff < 0.);
-}
 
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
   glViewport(0, 0, width, height);
   glfwSetCursorPos(window, width * 0.5f, height * 0.5f);
+  _globalWindow.width = width;
+  _globalWindow.height = height;
 }
 
 int main() {
   // Change cwd to where "src" directory located (since launching the executable always from the directory where its located)
   SetCurrentDirectory("../../../");
   srand(time(NULL));
+
+  _globalWindow.width = 1200;
+  _globalWindow.height = 720;
 
   // GLFW init
   glfwInit();
@@ -48,7 +39,7 @@ int main() {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // Window init
-  GLFWwindow* window = glfwCreateWindow(1200, 720, "LearnOpenGL", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(_globalWindow.width, _globalWindow.height, "LearnOpenGL", NULL, NULL);
   if (!window) {
     printf("Failed to create GFLW window\n");
     glfwTerminate();
@@ -56,7 +47,7 @@ int main() {
   }
   glfwMakeContextCurrent(window);
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-  glfwSetCursorPos(window, 1200 * 0.5f, 720 * 0.5f);
+  glfwSetCursorPos(window, _globalWindow.width * 0.5f, _globalWindow.height * 0.5f);
 
   // GLAD init
   int version = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -65,7 +56,7 @@ int main() {
     return -1;
   }
 
-  glViewport(0, 0, 1200, 720);
+  glViewport(0, 0, _globalWindow.width, _globalWindow.height);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
   Texture defaultTextures[] = {
@@ -73,19 +64,11 @@ int main() {
   };
 
   GLint mainShader = shaderCreate("src/shaders/main.vert", "src/shaders/main.frag");
-  GLint grassShader = shaderCreate("src/shaders/main.vert", "src/shaders/grass.frag");
-  GLint windowsShader = shaderCreate("src/shaders/main.vert", "src/shaders/windows.frag");
+  GLint framebufferShader = shaderCreate("src/shaders/framebuffer.vert", "src/shaders/framebuffer.frag");
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model ground = modelCreate("src/mesh/models/ground/");
-  Model grass = modelCreate("src/mesh/models/grass/");
-  Model windows = modelCreate("src/mesh/models/windows/");
-  modelScale(&ground, 0.5f);
-  modelScale(&grass, 0.5f);
-  modelScale(&windows, 0.5f);
-
-  Object pyramid = objectCreateTestPyramid();
-  objectAddTexture(&pyramid, &defaultTextures[0]);
+  Model model = modelCreate("src/mesh/models/crow/");
+  modelScale(&model, 0.5f);
 
   // ===== Illumination ===== //
 
@@ -97,9 +80,6 @@ int main() {
   glUseProgram(mainShader);
 	glUniform4f(glGetUniformLocation(mainShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(mainShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-  glUseProgram(grassShader);
-	glUniform4f(glGetUniformLocation(grassShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(grassShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
   // ======================== //
 
@@ -111,13 +91,8 @@ int main() {
 	glUniform1f(glGetUniformLocation(mainShader, "near"), nearPlane);
 	glUniform1f(glGetUniformLocation(mainShader, "far"), farPlane);
 
-  glUseProgram(grassShader);
-	glUniform4f(glGetUniformLocation(grassShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(grassShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
-
-  glUseProgram(grassShader);
-	glUniform4f(glGetUniformLocation(grassShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(grassShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+  glUseProgram(framebufferShader);
+  glUniform1i(glGetUniformLocation(framebufferShader, "screenTexture"), 0);
 
   glEnable(GL_DEPTH_TEST);
 
@@ -125,23 +100,56 @@ int main() {
   glCullFace(GL_FRONT);
   glFrontFace(GL_CW);
 
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  // Windows init
-  for (int i = 0; i < NUM_WINDOWS; i++) {
-    positionsWin[i] = (vec3s) {
-      -15.f + rand() / (RAND_MAX / 30.f),
-      1.f + rand() / (RAND_MAX / 3.f),
-      -15.f + rand() / (RAND_MAX / 30.f)
-    };
-    rotationsWin[i] = (float)rand() / RAND_MAX;
-    orderDraw[i] = i;
-  }
-
   double titleTimer = glfwGetTime();
   double prevTime = titleTimer;
   double currTime = prevTime;
   double dt;
+
+  u32 FBO;
+  glGenFramebuffers(1, &FBO);
+  glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+  u32 framebufferTexture;
+  glGenTextures(1, &framebufferTexture);
+  glBindTexture(GL_TEXTURE_2D, framebufferTexture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _globalWindow.width, _globalWindow.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTexture, 0);
+
+  u32 RBO;
+  glGenRenderbuffers(1, &RBO);
+  glBindRenderbuffer(GL_RENDERBUFFER, RBO);
+  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, _globalWindow.width, _globalWindow.height);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, RBO);
+
+  GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+    printf("Framebuffer error, status: %d (0x%.4x)\n", fboStatus, fboStatus);
+
+  float rectangleVertices[] = {
+    // Coords      // texCoords
+     1.0f, -1.0f,  1.0f, 0.0f,
+    -1.0f, -1.0f,  0.0f, 0.0f,
+    -1.0f,  1.0f,  0.0f, 1.0f,
+
+     1.0f,  1.0f,  1.0f, 1.0f,
+     1.0f, -1.0f,  1.0f, 0.0f,
+    -1.0f,  1.0f,  0.0f, 1.0f
+  };
+
+  u32 rectVAO, rectVBO;
+	glGenVertexArrays(1, &rectVAO);
+	glGenBuffers(1, &rectVBO);
+	glBindVertexArray(rectVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, rectVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(rectangleVertices), &rectangleVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -155,6 +163,10 @@ int main() {
     currTime = glfwGetTime();
     dt = currTime - prevTime;
     prevTime = currTime;
+
+    glUniform1i(glGetUniformLocation(framebufferShader, "winWidth"), width);
+    glUniform1i(glGetUniformLocation(framebufferShader, "winHeight"), height);
+    glUniform1f(glGetUniformLocation(framebufferShader, "time"), currTime);
 
     // Update window title every 0.3 seconds
     if (glfwGetTime() - titleTimer >= 0.3) {
@@ -172,58 +184,33 @@ int main() {
       titleTimer = glfwGetTime();
     }
 
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
 
     processInput(window, width, height, &camera);
 
     cameraMove(&camera, mouseX, mouseY, width, height);
     cameraUpdate(&camera, 45.f, nearPlane, farPlane, (float)width / height, dt);
 
-    // Get distance from each window to the camera
-    for (int i = 0; i < NUM_WINDOWS; i++)
-      distanceCamera[i] = glms_vec3_norm(glms_vec3_sub(camera.position, positionsWin[i]));
+    modelDraw(&model, &camera, mainShader);
 
-    qsort(orderDraw, NUM_WINDOWS, sizeof(u32), compare);
-
-    modelDraw(&ground, &camera, mainShader);
-
-    // Disable cull face so the grass and windows have both faces
     glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    modelDraw(&grass, &camera, grassShader);
-    for (int i = 0; i < NUM_WINDOWS; i++) {
-      modelDrawTRC(
-        &windows,
-        &camera,
-        windowsShader,
-        positionsWin[orderDraw[i]],
-        (versors){0.f, 0.f, rotationsWin[orderDraw[i]], 1.f},
-        (vec3s){1.f, 1.f, 1.f}
-      );
-    }
-    // Use blending only for windows
-    glDisable(GL_BLEND);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glUseProgram(framebufferShader);
+    glBindVertexArray(rectVAO);
+    glDisable(GL_DEPTH_TEST);
+    glBindTexture(GL_TEXTURE_2D, framebufferTexture);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
     glEnable(GL_CULL_FACE);
-
-    /* { */
-    /*   mat4s mat = GLMS_MAT4_IDENTITY_INIT; */
-    /*   vec3s trans = (vec3s){0.f, 0.f, 0.f}; */
-    /*   versors rot = (versors){0.f, 0.f, 0.f, 1.f}; */
-    /*   vec3s sca = (vec3s){1.f, 1.f, 1.f}; */
-    /*   objectDraw(&pyramid, &camera, mat, trans, rot, sca); */
-    /* } */
 
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
-  modelDelete(&ground);
-  modelDelete(&grass);
-  modelDelete(&windows);
+  modelDelete(&model);
   glDeleteProgram(mainShader);
-  glDeleteProgram(grassShader);
-  glDeleteProgram(windowsShader);
 
   glfwTerminate();
 
