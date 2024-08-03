@@ -1,6 +1,7 @@
 #include "texture.h"
 #include <assert.h>
 #include <gl/gl.h>
+#include <string.h>
 
 Texture textureCreate(const char* path, const char* type) {
   static u16 slot = 0;
@@ -44,8 +45,8 @@ Texture textureCreate(const char* path, const char* type) {
   Texture tex;
   tex.id = textureId;
   tex.slot = slot++;
-  tex.type = type;
-  tex.name = getFileNameFromPath(path);
+  strcpy_s(tex.type, sizeof(char) * 256, type);
+  strcpy_s(tex.name, sizeof(char) * 256, getFileNameFromPath(path));
 
   return tex;
 }

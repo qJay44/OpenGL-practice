@@ -4,8 +4,8 @@
 typedef struct {
   GLuint id;
   GLuint slot;
-  const char* type;
-  const char* name;
+  char type[256];
+  char name[256];
 } Texture;
 
 [[nodiscard]]
