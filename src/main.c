@@ -87,7 +87,7 @@ int main() {
 	glUniform1f(glGetUniformLocation(mainShader, "far"), farPlane);
 
   glUseProgram(mainShader);
-	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 2);
+	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), 0);
 
   glEnable(GL_DEPTH_TEST);
 
@@ -250,7 +250,7 @@ int main() {
     glUniformMatrix4fv(glGetUniformLocation(skyboxShader, "projection"), 1, GL_FALSE, (const GLfloat*)proj.raw);
 
     glBindVertexArray(skyboxVAO);
-    glActiveTexture(GL_TEXTURE2);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
