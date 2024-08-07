@@ -2,7 +2,7 @@
 #define SHADER_H
 
 [[nodiscard]]
-GLint shaderCreate(const char* vsPath, const char* fsPath);
+GLint shaderCreate(const char* vsPath, const char* fsPath, const char* gsPath);
 
 #endif
 

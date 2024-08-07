@@ -2,10 +2,10 @@
 
 out vec4 FragColor;
 
+in vec3 vertPos;
 in vec3 color;
 in vec2 texCoord;
-in vec3 vertNormal;
-in vec3 vertPos;
+in vec3 normal;
 
 uniform vec3 background;
 uniform float near;
@@ -23,14 +23,14 @@ vec4 pointLight() {
   float b = 0.7f;
   float intensity = 1.f / (a * dist * dist + b * dist + 1.f);
 
-  vec3 normal = normalize(vertNormal);
+  vec3 n = normalize(normal);
   vec3 lightDirection = normalize(lightPos - vertPos);
-  float diffuse = max(dot(normal, lightDirection), 0.f);
+  float diffuse = max(dot(n, lightDirection), 0.f);
   float ambient = 0.2f;
 
   float specularLight = 0.5f;
   vec3 viewDirection = normalize(camPos - vertPos);
-  vec3 reflectionDirection = reflect(-lightDirection, normal);
+  vec3 reflectionDirection = reflect(-lightDirection, n);
   float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.f), 16);
   float specular = specAmount * specularLight;
 
@@ -41,14 +41,14 @@ vec4 pointLight() {
 }
 
 vec4 directionalLight() {
-  vec3 normal = normalize(vertNormal);
+  vec3 n = normalize(normal);
   vec3 lightDirection = normalize(vec3(1.f, 1.f, 0.f));
-  float diffuse = max(dot(normal, lightDirection), 0.f);
+  float diffuse = max(dot(n, lightDirection), 0.f);
   float ambient = 0.2f;
 
   float specularLight = 0.5f;
   vec3 viewDirection = normalize(camPos - vertPos);
-  vec3 reflectionDirection = reflect(-lightDirection, normal);
+  vec3 reflectionDirection = reflect(-lightDirection, n);
   float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.f), 16);
   float specular = specAmount * specularLight;
 
@@ -62,14 +62,14 @@ vec4 spotLight() {
   float outerCone = 0.9f;
   float innerCone = 0.95f;
 
-  vec3 normal = normalize(vertNormal);
+  vec3 n = normalize(normal);
   vec3 lightDirection = normalize(lightPos - vertPos);
-  float diffuse = max(dot(normal, lightDirection), 0.f);
+  float diffuse = max(dot(n, lightDirection), 0.f);
   float ambient = 0.2f;
 
   float specularLight = 0.5f;
   vec3 viewDirection = normalize(camPos - vertPos);
-  vec3 reflectionDirection = reflect(-lightDirection, normal);
+  vec3 reflectionDirection = reflect(-lightDirection, n);
   float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.f), 16);
   float specular = specAmount * specularLight;
 

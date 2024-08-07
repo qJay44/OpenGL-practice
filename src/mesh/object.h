@@ -28,6 +28,7 @@ typedef struct {
 
 [[nodiscard]] Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize);
 [[nodiscard]] Object objectCreateTestPyramid(void);
+[[nodiscard]] Object objectCreateTestLight(vec3s color);
 
 void objectAddTexture(Object* self, Texture* tex);
 void objectTranslate(Object* self, vec3s v);
@@ -36,7 +37,7 @@ void objectSetVec3Unifrom(const Object* self, const char* name, GLint shader, ve
 void objectSetVec4Unifrom(const Object* self, const char* name, GLint shader, vec4s v);
 void objectSetTextureUnifrom(const Object* self, const char* name, GLint shader, GLuint slot);
 void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name, GLint shader);
-void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, versors rotation, vec3s scale, GLint shader);
+void objectDraw(const Object* self, const Camera* camera, vec3s translation, versors rotation, vec3s scale, GLint shader);
 void objectDelete(Object* self);
 
 #endif

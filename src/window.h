@@ -5,7 +5,7 @@ struct WindowProp {
   int width, height;
 };
 
-struct WindowProp _globalWindow;
+struct WindowProp _gWindow;
 
 #endif
 

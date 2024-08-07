@@ -87,6 +87,37 @@ Object objectCreateTestPyramid(void) {
   return objectCreate(vertices, sizeof(float) * 176, indices, sizeof(GLuint) * 18);
 }
 
+Object objectCreateTestLight(vec3s color) {
+  // Positions (3), colors (3), texture coords (2), normals (3)
+  GLfloat vertices[88] = {
+	  -0.1f, -0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+	  -0.1f, -0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+	   0.1f, -0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+	   0.1f, -0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+	  -0.1f,  0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+	  -0.1f,  0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+	   0.1f,  0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+	   0.1f,  0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+  };
+
+  GLuint indices[36] = {
+	  0, 1, 2,
+	  0, 2, 3,
+	  0, 4, 7,
+	  0, 7, 3,
+	  3, 7, 6,
+	  3, 6, 2,
+	  2, 6, 5,
+	  2, 5, 1,
+	  1, 5, 4,
+	  1, 4, 0,
+	  4, 5, 6,
+	  4, 6, 7
+  };
+
+  return objectCreate(vertices, sizeof(float) * 88, indices, sizeof(GLuint) * 36);
+}
+
 
 void objectAddTexture(Object* self, Texture* tex) {
   if (self->texsCount < OBJECT_MAX_TEXTURES)
@@ -129,7 +160,7 @@ void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const 
   glUniformMatrix4fv(loc, 1, GL_FALSE, mat);
 }
 
-void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s translation, versors rotation, vec3s scale, GLint shader) {
+void objectDraw(const Object* self, const Camera* camera, vec3s translation, versors rotation, vec3s scale, GLint shader) {
   glUseProgram(shader);
   vaoBind(&self->vao);
 
@@ -160,7 +191,7 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
   }
 
   objectSetVec3Unifrom(self, "camPos", shader, camera->position);
-  objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "camMat", shader);
+  objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "cam", shader);
 
   mat4s trans = GLMS_MAT4_IDENTITY_INIT;
   mat4s rot = GLMS_MAT4_IDENTITY_INIT;
@@ -173,7 +204,7 @@ void objectDraw(const Object* self, const Camera* camera, mat4s matrix, vec3s tr
   glUniformMatrix4fv(glGetUniformLocation(shader, "translation"), 1, GL_FALSE, (const GLfloat*)trans.raw);
   glUniformMatrix4fv(glGetUniformLocation(shader, "rotation"), 1, GL_FALSE, (const GLfloat*)rot.raw);
   glUniformMatrix4fv(glGetUniformLocation(shader, "scale"), 1, GL_FALSE, (const GLfloat*)sca.raw);
-  glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, (const GLfloat*)matrix.raw);
+  glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, (const GLfloat*)self->mat.raw);
 
   glDrawElements(GL_TRIANGLES, self->indSize / sizeof(self->indices[0]), GL_UNSIGNED_INT, 0);
   vaoUnbind();

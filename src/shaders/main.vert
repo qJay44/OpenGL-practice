@@ -5,23 +5,24 @@ layout (location = 1) in vec3 col;
 layout (location = 2) in vec2 tex;
 layout (location = 3) in vec3 normal;
 
-out vec3 color;
-out vec2 texCoord;
-out vec3 vertNormal;
-out vec3 vertPos;
+out DATA {
+  vec3 normal;
+  vec3 color;
+  vec2 texCoord;
+  mat4 projection;
+} data_out;
 
-uniform mat4 camMat;
+uniform mat4 cam;
 uniform mat4 model;
 uniform mat4 translation;
 uniform mat4 rotation;
 uniform mat4 scale;
 
 void main() {
-  vertPos = vec3(model * translation * rotation * scale * vec4(pos, 1.f));
-  color = col;
-  texCoord = mat2(1.f, 0.f, 0.f, -1.f) * tex; // Instead of texCoord = mat2(0.f, -1.f, 1.f, 0.f) * tex;
-  vertNormal = normal;
-
-  gl_Position = camMat * vec4(vertPos, 1.f);
+  gl_Position = model * translation * rotation * scale * vec4(pos, 1.f);
+  data_out.normal = normal;
+  data_out.color = col;
+  data_out.texCoord = mat2(1.f, 0.f, 0.f, -1.f) * tex;
+  data_out.projection = cam;
 }
 

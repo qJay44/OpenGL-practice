@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "cglm/mat4.h"
+#include "cglm/struct/mat4.h"
 #include "cglm/struct/vec3.h"
 #include "cglm/types.h"
 #include "cglm/quat.h"
@@ -13,7 +14,7 @@
 
 #define MODEL_CACHED_TEXTURES_LENGTH 20
 
-byte* getDataBin(const Model* self, size_t* outSize) {
+static byte* getDataBin(const Model* self, size_t* outSize) {
   json* buffers;
   json* uri;
   if (!json_object_object_get_ex(self->json, "buffers", &buffers))
@@ -32,7 +33,7 @@ byte* getDataBin(const Model* self, size_t* outSize) {
   return readFileBytes(path, outSize);
 }
 
-float* getFloats(const Model* self, const json* accessor, u32* outCount) {
+static float* getFloats(const Model* self, const json* accessor, u32* outCount) {
   u32 buffViewInd = 1;
   u32 accByteOffset = 0;
 
@@ -87,7 +88,7 @@ float* getFloats(const Model* self, const json* accessor, u32* outCount) {
   return out;
 }
 
-GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
+static GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
   u32 buffViewInd = 0;
   u32 accByteOffset = 0;
   u32 byteOffset = 0;
@@ -163,7 +164,45 @@ GLuint* getIndices(const Model* self, const json* accessor, u32* outCount) {
   return out;
 }
 
-void getTextures(Model* self) {
+static float* assembleVertices(float* positions, float* normals, float* texUVs, u32 count) {
+  float* vertices = malloc(sizeof(float) * OBJECT_VERTEX_ATTRIBUTES * count);
+
+  /* Assuming that:
+     * positions are vec3,
+     * normals are vec3,
+     * texUVs are vec2
+  */
+  // NOTE: Must always be in this order: positions (3), colors (3), texture coords (2), normals (3)
+  for (int i = 0; i < count; i++) {
+    int i11 = i * OBJECT_VERTEX_ATTRIBUTES;
+    int i3 = i * 3;
+    int i2 = i * 2;
+
+    assert(i11 < count * OBJECT_VERTEX_ATTRIBUTES);
+    assert(i3 < count * 3);
+    assert(i2 < count * 2);
+
+    vertices[i11 + 0] = positions[i3 + 0];
+    vertices[i11 + 1] = positions[i3 + 1];
+    vertices[i11 + 2] = positions[i3 + 2];
+
+    // Color
+    vertices[i11 + 3] = 1.f;
+    vertices[i11 + 4] = 1.f;
+    vertices[i11 + 5] = 1.f;
+
+    vertices[i11 + 6] = texUVs[i2 + 0];
+    vertices[i11 + 7] = texUVs[i2 + 1];
+
+    vertices[i11 + 8]  = normals[i3 + 0];
+    vertices[i11 + 9]  = normals[i3 + 1];
+    vertices[i11 + 10] = normals[i3 + 2];
+  }
+
+  return vertices;
+}
+
+static void getTextures(Model* self) {
   static Texture cachedTextures[MODEL_CACHED_TEXTURES_LENGTH];
   static u32 cachedTexturesIdx = 0;
 
@@ -216,45 +255,7 @@ void getTextures(Model* self) {
   }
 }
 
-float* assembleVertices(float* positions, float* normals, float* texUVs, u32 count) {
-  float* vertices = malloc(sizeof(float) * OBJECT_VERTEX_ATTRIBUTES * count);
-
-  /* Assuming that:
-     * positions are vec3,
-     * normals are vec3,
-     * texUVs are vec2
-  */
-  // NOTE: Must always be in this order: positions (3), colors (3), texture coords (2), normals (3)
-  for (int i = 0; i < count; i++) {
-    int i11 = i * OBJECT_VERTEX_ATTRIBUTES;
-    int i3 = i * 3;
-    int i2 = i * 2;
-
-    assert(i11 < count * OBJECT_VERTEX_ATTRIBUTES);
-    assert(i3 < count * 3);
-    assert(i2 < count * 2);
-
-    vertices[i11 + 0] = positions[i3 + 0];
-    vertices[i11 + 1] = positions[i3 + 1];
-    vertices[i11 + 2] = positions[i3 + 2];
-
-    // Color
-    vertices[i11 + 3] = 1.f;
-    vertices[i11 + 4] = 1.f;
-    vertices[i11 + 5] = 1.f;
-
-    vertices[i11 + 6] = texUVs[i2 + 0];
-    vertices[i11 + 7] = texUVs[i2 + 1];
-
-    vertices[i11 + 8]  = normals[i3 + 0];
-    vertices[i11 + 9]  = normals[i3 + 1];
-    vertices[i11 + 10] = normals[i3 + 2];
-  }
-
-  return vertices;
-}
-
-void loadMesh(Model* self, u32 idxMesh) {
+static void loadMesh(Model* self, u32 idxMesh, mat4s mat) {
   u32 posAccIdx;
   u32 normalAccIdx;
   u32 texAccIdx;
@@ -337,6 +338,7 @@ void loadMesh(Model* self, u32 idxMesh) {
   Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * OBJECT_VERTEX_ATTRIBUTES, indices, indicesCount * sizeof(GLuint));
   for (int i = 0; i < self->texturesIdx; i++)
     objectAddTexture(&mesh, self->textures[i]);
+  mesh.mat = mat;
 
   // Push back the mesh
   if (self->meshesIdx == self->meshesSize / sizeof(self->meshes[0]))
@@ -352,7 +354,7 @@ void loadMesh(Model* self, u32 idxMesh) {
   free(indices);
 }
 
-void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
+static void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
   json* nodes;
   if (!json_object_object_get_ex(self->json, "nodes", &nodes))
     printf("Can't get \"nodes\" from json\n");
@@ -436,18 +438,10 @@ void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
       arrResizeVec3s(&self->scaleMeshes, self->smSize, &self->smSize);
     self->scaleMeshes[self->smIdx++] = (vec3s){scale[0], scale[1], scale[2]};
 
-    // Push back matrices
-    if (self->mmIdx == self->mmSize / sizeof(self->matMeshes[0]))
-      arrResizeMat4s(&self->matMeshes, self->mmSize, &self->mmSize);
-    mat4s m = {
-      matNextNode[0][0], matNextNode[0][1], matNextNode[0][2], matNextNode[0][3],
-      matNextNode[1][0], matNextNode[1][1], matNextNode[1][2], matNextNode[1][3],
-      matNextNode[2][0], matNextNode[2][1], matNextNode[2][2], matNextNode[2][3],
-      matNextNode[3][0], matNextNode[3][1], matNextNode[3][2], matNextNode[3][3],
-    };
-    self->matMeshes[self->mmIdx++] = m;
+    mat4s mat;
+    glm_mat4_copy(matNextNode, mat.raw);
 
-    loadMesh(self, json_object_get_int(mesh));
+    loadMesh(self, json_object_get_int(mesh), mat);
   }
 
   json* children;
@@ -487,9 +481,6 @@ Model modelCreate(const char* modelDirectory) {
   model.smIdx = 0;
   model.smSize = sizeof(vec3s);
   model.scaleMeshes = malloc(model.smSize);
-  model.mmIdx = 0;
-  model.mmSize = sizeof(mat4s);
-  model.matMeshes = malloc(model.mmSize);
 
   mat4 traverseMatInit = GLM_MAT4_IDENTITY_INIT;
   traverseNode(&model, 0, traverseMatInit);
@@ -519,14 +510,14 @@ void modelDraw(const Model* self, const Camera* camera, GLint shader) {
     if (self->rmIdx > i) rotation = self->rotationMeshes[i];
     if (self->smIdx > i) scale = self->scaleMeshes[i];
 
-    objectDraw(&self->meshes[i], camera, self->matMeshes[i], translation, rotation, scale, shader);
+    objectDraw(&self->meshes[i], camera, translation, rotation, scale, shader);
   }
 }
 
 void modelDrawTRC(const Model* self, const Camera* camera, GLint shader, vec3s translation, versors rotation, vec3s scale) {
   assert(self->meshesIdx == self->mmIdx);
   for (int i = 0; i < self->meshesIdx; i++)
-    objectDraw(&self->meshes[i], camera, self->matMeshes[i], translation, rotation, scale, shader);
+    objectDraw(&self->meshes[i], camera, translation, rotation, scale, shader);
 }
 
 void modelDelete(Model* self) {
@@ -540,6 +531,5 @@ void modelDelete(Model* self) {
   free(self->translationMeshes);
   free(self->rotationMeshes);
   free(self->scaleMeshes);
-  free(self->matMeshes);
 }
 

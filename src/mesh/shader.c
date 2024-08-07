@@ -3,7 +3,7 @@
 
 #include "shader.h"
 
-GLuint load(const char* path, int type) {
+static GLuint load(const char* path, int type) {
   char* shaderStr = readFile(path, false);
   const char* shaderStrPtr = shaderStr;
   GLuint shaderId = glCreateShader(type);
@@ -13,7 +13,7 @@ GLuint load(const char* path, int type) {
   return shaderId;
 }
 
-GLint compile(const char* path, int type) {
+static GLint compile(const char* path, int type) {
   GLint shaderId = load(path, type);
 
   GLint hasCompiled;
@@ -33,7 +33,7 @@ GLint compile(const char* path, int type) {
   return shaderId;
 }
 
-void link(GLuint program) {
+static void link(GLuint program) {
   GLint hasLinked;
   char infoLog[1024];
 
@@ -48,18 +48,25 @@ void link(GLuint program) {
   }
 }
 
-GLint shaderCreate(const char* vsPath, const char* fsPath) {
-  GLint vertexShaderId = compile(vsPath, GL_VERTEX_SHADER);
-  GLint fragmentShaderId = compile(fsPath, GL_FRAGMENT_SHADER);
+GLint shaderCreate(const char* vsPath, const char* fsPath, const char* gsPath) {
+  GLint program = glCreateProgram();
+  GLint shaders[3];
+  u8 idx = 0;
 
-  GLint shaderProgram = glCreateProgram();
-  glAttachShader(shaderProgram, vertexShaderId);
-  glAttachShader(shaderProgram, fragmentShaderId);
-  link(shaderProgram);
+  shaders[idx++] = compile(vsPath, GL_VERTEX_SHADER);
+  shaders[idx++] = compile(fsPath, GL_FRAGMENT_SHADER);
 
-  glDeleteShader(vertexShaderId);
-  glDeleteShader(fragmentShaderId);
+  if (gsPath)
+    shaders[idx++] = compile(gsPath, GL_GEOMETRY_SHADER);
 
-  return shaderProgram;
+  for (u8 i = 0; i < idx; i++)
+    glAttachShader(program, shaders[i]);
+
+  link(program);
+
+  for (u8 i = 0; i < idx; i++)
+    glDeleteShader(shaders[i]);
+
+  return program;
 }
 

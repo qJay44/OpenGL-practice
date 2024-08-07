@@ -36,21 +36,7 @@ typedef struct {
   vec3s* scaleMeshes;
   size_t smSize;
   u32 smIdx;
-
-  mat4s* matMeshes;
-  size_t mmSize;
-  u32 mmIdx;
-
 } Model;
-
-[[nodiscard]] static byte* getDataBin(const Model* self, size_t* outSize);
-[[nodiscard]] static float* getFloats(const Model* self, const json* accessor, u32* outCount);
-[[nodiscard]] static GLuint* getIndices(const Model* self, const json* accessor, u32* outCount);
-[[nodiscard]] static float* assembleVertices(float* positions, float* normals, float* texUVs, u32 count);
-static void getTextures(Model* self);
-
-static void loadMesh(Model* self, u32 idxMesh);
-static void traverseNode(Model* self, u32 nextNode, mat4 matrix);
 
 [[nodiscard]]
 Model modelCreate(const char* modelDirectory);
