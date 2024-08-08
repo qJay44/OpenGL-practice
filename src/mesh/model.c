@@ -3,16 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cglm/affine.h"
 #include "cglm/mat4.h"
 #include "cglm/struct/mat4.h"
-#include "cglm/struct/vec3.h"
 #include "cglm/types.h"
 #include "cglm/quat.h"
 
 #include "model.h"
 #include "object.h"
-
-#define MODEL_CACHED_TEXTURES_LENGTH 20
 
 static byte* getDataBin(const Model* self, size_t* outSize) {
   json* buffers;
@@ -202,10 +200,7 @@ static float* assembleVertices(float* positions, float* normals, float* texUVs, 
   return vertices;
 }
 
-static void getTextures(Model* self) {
-  static Texture cachedTextures[MODEL_CACHED_TEXTURES_LENGTH];
-  static u32 cachedTexturesIdx = 0;
-
+static void loadTextures(Model* self, Object* obj) {
   json* images;
   if (!json_object_object_get_ex(self->json, "images", &images))
     printf("Can't get \"images\" from json\n");
@@ -224,34 +219,7 @@ static void getTextures(Model* self) {
     char path[pathLength];
     concat(self->dirPath, uriStr, path, sizeof(char) * pathLength);
 
-    bool skip = false;
-    for (u32 j = 0; j < cachedTexturesIdx; j++) {
-      if (!strcmp(cachedTextures[j].name, uriStr)) {
-        assert(self->texturesIdx < MODEL_TEXTURES_LENGTH);
-        self->textures[self->texturesIdx++] = &cachedTextures[j];
-        skip = true;
-        break;
-      }
-    }
-
-    if (!skip) {
-      char* texType;
-
-      if (strstr(uriStr, "baseColor") || strstr(uriStr, "diffuse"))
-        texType = "diffuse";
-      else if (strstr(uriStr, "metallicRoughness") || strstr(uriStr, "specular"))
-        texType = "specular";
-      else {
-        printf("Unhandled texture type (%s)\n", uriStr);
-        continue;
-      }
-
-      assert(cachedTexturesIdx < MODEL_CACHED_TEXTURES_LENGTH);
-      cachedTextures[cachedTexturesIdx++] = textureCreate(path, texType);
-
-      assert(self->texturesIdx < MODEL_TEXTURES_LENGTH);
-      self->textures[self->texturesIdx++] = &cachedTextures[cachedTexturesIdx - 1];
-    }
+    objectAddTexture(obj, uriStr, path);
   }
 }
 
@@ -333,11 +301,9 @@ static void loadMesh(Model* self, u32 idxMesh, mat4s mat) {
   u32 indicesCount;
   GLuint* indices = getIndices(self, json_object_array_get_idx(accessors, indAccIdx), &indicesCount);
 
-  getTextures(self);
 
   Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * OBJECT_VERTEX_ATTRIBUTES, indices, indicesCount * sizeof(GLuint));
-  for (int i = 0; i < self->texturesIdx; i++)
-    objectAddTexture(&mesh, self->textures[i]);
+  loadTextures(self, &mesh);
   mesh.mat = mat;
 
   // Push back the mesh
@@ -354,7 +320,7 @@ static void loadMesh(Model* self, u32 idxMesh, mat4s mat) {
   free(indices);
 }
 
-static void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
+static void traverseNode(Model* self, u32 nextNode, mat4s matrix) {
   json* nodes;
   if (!json_object_object_get_ex(self->json, "nodes", &nodes))
     printf("Can't get \"nodes\" from json\n");
@@ -362,87 +328,62 @@ static void traverseNode(Model* self, u32 nextNode, mat4 matrix) {
   json* node = json_object_array_get_idx(nodes, nextNode);
 
   // Translation
-  vec3 translation = {0.f, 0.f, 0.f};
+  vec3s translation = {0.f, 0.f, 0.f};
   json* translationJson;
   if (json_object_object_get_ex(node, "nodes", &translationJson)) {
     assert(json_object_array_length(translationJson) == 3);
     for (int i = 0; i < 3; i++) {
       json* tJson = json_object_array_get_idx(translationJson, i);
-      translation[i] = (float)json_object_get_double(tJson);
+      translation.raw[i] = (float)json_object_get_double(tJson);
     }
   }
 
   // Rotation
-  versor rotation = {0.f, 0.f, 0.f, 1.f};
-  json* rotationJson;
-  if (json_object_object_get_ex(node, "rotation", &rotationJson)) {
-    assert(json_object_array_length(rotationJson) == 4);
-    for (int i = 0; i < 4; i++) {
-      json* rJson = json_object_array_get_idx(rotationJson, i);
-      rotation[i] = (float)json_object_get_double(rJson);
+  mat4s rotation = GLMS_MAT4_IDENTITY_INIT; {
+    versor rot = {0.f, 0.f, 0.f, 1.f};
+    json* rotationJson;
+    if (json_object_object_get_ex(node, "rotation", &rotationJson)) {
+      assert(json_object_array_length(rotationJson) == 4);
+      for (int i = 0; i < 4; i++) {
+        json* rJson = json_object_array_get_idx(rotationJson, i);
+        rot[i] = (float)json_object_get_double(rJson);
+      }
     }
+    glm_quat_mat4(rot, rotation.raw);
   }
 
   // Scale
-  vec3 scale = {1.f, 1.f, 1.f};
+  vec3s scale = {1.f, 1.f, 1.f};
   json* scaleJson;
   if (json_object_object_get_ex(node, "scale", &scaleJson)) {
     assert(json_object_array_length(scaleJson) == 3);
     for (int i = 0; i < 3; i++) {
       json* sJson = json_object_array_get_idx(scaleJson, i);
-      scale[i] = (float)json_object_get_double(sJson);
+      scale.raw[i] = (float)json_object_get_double(sJson);
     }
   }
 
   // Matrix
-  mat4 matNode = GLM_MAT4_IDENTITY_INIT;
+  mat4s matNode = GLMS_MAT4_IDENTITY_INIT;
   json* matJson;
   if (json_object_object_get_ex(node, "matrix", &matJson)) {
     assert(json_object_array_length(matJson) == 16);
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 4; j++) {
         json* mJson = json_object_array_get_idx(matJson, j + i * 4);
-        matNode[i][j] = (float)json_object_get_double(mJson);
+        matNode.raw[i][j] = (float)json_object_get_double(mJson);
       }
     }
   }
 
-  mat4 trans = GLM_MAT4_IDENTITY_INIT;
-  mat4 rot = GLM_MAT4_IDENTITY_INIT;
-  mat4 sca = GLM_MAT4_IDENTITY_INIT;
-
-  glm_translate(trans, translation);
-  glm_quat_mat4(rotation, rot);
-  glm_scale(sca, scale);
-
-  mat4 matNextNode = GLM_MAT4_IDENTITY_INIT;
-  glm_mat4_mul(matrix, matNode, matNextNode);
-  glm_mat4_mul(matNextNode, trans, matNextNode);
-  glm_mat4_mul(matNextNode, rot, matNextNode);
-  glm_mat4_mul(matNextNode, sca, matNextNode);
+  mat4s matNextNode = glms_mat4_mul(matrix, matNode);
+  glm_translate(matNextNode.raw, translation.raw);
+  glm_mat4_mul(matNextNode.raw, rotation.raw, matNextNode.raw);
+  glm_scale(matNextNode.raw, scale.raw);
 
   json* mesh;
-  if (json_object_object_get_ex(node, "mesh", &mesh)) {
-    // Push back translation
-    if (self->tmIdx == self->tmSize / sizeof(self->translationMeshes[0]))
-      arrResizeVec3s(&self->translationMeshes, self->tmSize, &self->tmSize);
-    self->translationMeshes[self->tmIdx++] = (vec3s){translation[0], translation[1], translation[2]};
-
-    // Push back rotation
-    if (self->rmIdx == self->rmSize / sizeof(self->rotationMeshes[0]))
-      arrResizeVersors(&self->rotationMeshes, self->rmSize, &self->rmSize);
-    self->rotationMeshes[self->rmIdx++] = (versors){rotation[0], rotation[1], rotation[2], rotation[3]};
-
-    // Push back scale
-    if (self->smIdx == self->smSize / sizeof(self->scaleMeshes[0]))
-      arrResizeVec3s(&self->scaleMeshes, self->smSize, &self->smSize);
-    self->scaleMeshes[self->smIdx++] = (vec3s){scale[0], scale[1], scale[2]};
-
-    mat4s mat;
-    glm_mat4_copy(matNextNode, mat.raw);
-
-    loadMesh(self, json_object_get_int(mesh), mat);
-  }
+  if (json_object_object_get_ex(node, "mesh", &mesh))
+    loadMesh(self, json_object_get_int(mesh), matNextNode);
 
   json* children;
   if (json_object_object_get_ex(node, "children", &children)) {
@@ -468,22 +409,11 @@ Model modelCreate(const char* modelDirectory) {
   model.dirPath = modelDirectory;
   model.json = json_tokener_parse(buffer);
   model.data = getDataBin(&model, &model.dataSize);
-  model.texturesIdx = 0;
   model.meshesIdx = 0;
   model.meshesSize = sizeof(Object);
   model.meshes = malloc(model.meshesSize);
-  model.tmIdx = 0;
-  model.tmSize = sizeof(vec3s);
-  model.translationMeshes = malloc(model.tmSize);
-  model.rmIdx = 0;
-  model.rmSize = sizeof(versors);
-  model.rotationMeshes = malloc(model.rmSize);
-  model.smIdx = 0;
-  model.smSize = sizeof(vec3s);
-  model.scaleMeshes = malloc(model.smSize);
 
-  mat4 traverseMatInit = GLM_MAT4_IDENTITY_INIT;
-  traverseNode(&model, 0, traverseMatInit);
+  traverseNode(&model, 0, (mat4s)GLMS_MAT4_IDENTITY_INIT);
 
   free(buffer);
 
@@ -491,33 +421,13 @@ Model modelCreate(const char* modelDirectory) {
 }
 
 void modelScale(Model* self, float scale) {
-  if (self->smIdx == 0)
-    self->scaleMeshes[self->smIdx++] = (vec3s){scale, scale, scale};
-  else
-    for (int i = 0; i < self->smIdx; i++)
-      self->scaleMeshes[i] = glms_vec3_scale(self->scaleMeshes[i], scale);
+  for (int i = 0; i < self->meshesIdx; i++)
+    glm_scale(self->meshes[i].mat.raw, (vec3){scale, scale, scale});
 }
 
 void modelDraw(const Model* self, const Camera* camera, GLint shader) {
-  vec3s translation = {0.f, 0.f, 0.f};
-  versors rotation = {0.f, 0.f, 0.f, 1.f};
-  vec3s scale = {1.f, 1.f, 1.f};
-
-  assert(self->meshesIdx == self->mmIdx);
-  for (int i = 0; i < self->meshesIdx; i++) {
-    // REVIEW: These meshes probably should be used like that
-    if (self->tmIdx > i) translation = self->translationMeshes[i];
-    if (self->rmIdx > i) rotation = self->rotationMeshes[i];
-    if (self->smIdx > i) scale = self->scaleMeshes[i];
-
-    objectDraw(&self->meshes[i], camera, translation, rotation, scale, shader);
-  }
-}
-
-void modelDrawTRC(const Model* self, const Camera* camera, GLint shader, vec3s translation, versors rotation, vec3s scale) {
-  assert(self->meshesIdx == self->mmIdx);
   for (int i = 0; i < self->meshesIdx; i++)
-    objectDraw(&self->meshes[i], camera, translation, rotation, scale, shader);
+    objectDraw(&self->meshes[i], camera, shader);
 }
 
 void modelDelete(Model* self) {
@@ -526,10 +436,7 @@ void modelDelete(Model* self) {
 
   for (int i = 0; i < self->meshesIdx; i++)
     objectDelete(&self->meshes[i]);
-  free(self->meshes);
 
-  free(self->translationMeshes);
-  free(self->rotationMeshes);
-  free(self->scaleMeshes);
+  free(self->meshes);
 }
 

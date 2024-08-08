@@ -4,11 +4,12 @@
 
 #include "cglm/struct/affine-pre.h"
 #include "cglm/struct/mat4.h"
-#include "cglm/quat.h"
 
 #include "texture.h"
 #include "vao.h"
 #include "object.h"
+
+#define CACHED_TEXTURES_LENGTH 20
 
 Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize) {
   Object obj = {
@@ -20,7 +21,7 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
     .vao = vaoCreate(1),
     .vbo = vboCreate(1),
     .ebo = eboCreate(1),
-    .texsCount = 0,
+    .texturesIdx = 0,
   };
   memcpy((void*)obj.vertices, (void*)vertices, vertSize);
   memcpy((void*)obj.indices, (void*)indices, indSize);
@@ -118,12 +119,39 @@ Object objectCreateTestLight(vec3s color) {
   return objectCreate(vertices, sizeof(float) * 88, indices, sizeof(GLuint) * 36);
 }
 
+void objectAddTexture(Object* self, const char* name, const char* path) {
+  static Texture cachedTextures[CACHED_TEXTURES_LENGTH];
+  static u32 cachedTexturesIdx = 0;
 
-void objectAddTexture(Object* self, Texture* tex) {
-  if (self->texsCount < OBJECT_MAX_TEXTURES)
-    self->textures[self->texsCount++] = tex;
-  else
-    printf("Warning: trying to add a texture to the object when reached maximum amount (%d)\n", OBJECT_MAX_TEXTURES);
+  bool skip = false;
+  for (u32 j = 0; j < cachedTexturesIdx; j++) {
+    if (!strcmp(cachedTextures[j].name, name)) {
+      self->textures[self->texturesIdx++] = &cachedTextures[j];
+      skip = true;
+      break;
+    }
+  }
+
+  if (!skip) {
+    char* texType;
+
+    if (strstr(name, "baseColor") || strstr(name, "diffuse"))
+      texType = "diffuse";
+    else if (strstr(name, "metallicRoughness") || strstr(name, "specular"))
+      texType = "specular";
+    else {
+      printf("Unhandled texture type (%s)\n", name);
+      return;
+    }
+
+    assert(cachedTexturesIdx < CACHED_TEXTURES_LENGTH);
+    cachedTextures[cachedTexturesIdx++] = textureCreate(path, texType);
+
+    if (self->texturesIdx < OBJECT_MAX_TEXTURES)
+      self->textures[self->texturesIdx++] = &cachedTextures[cachedTexturesIdx - 1];
+    else
+      printf("Warning: trying to add a texture to the object when reached maximum amount (%d)\n", OBJECT_MAX_TEXTURES);
+  }
 }
 
 void objectTranslate(Object* self, vec3s v) {
@@ -160,14 +188,14 @@ void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const 
   glUniformMatrix4fv(loc, 1, GL_FALSE, mat);
 }
 
-void objectDraw(const Object* self, const Camera* camera, vec3s translation, versors rotation, vec3s scale, GLint shader) {
+void objectDraw(const Object* self, const Camera* camera, GLint shader) {
   glUseProgram(shader);
   vaoBind(&self->vao);
 
   u8 numDiffuse = 0;
   u8 numSpecular = 0;
 
-  for (int i = 0; i < self->texsCount; i++) {
+  for (int i = 0; i < self->texturesIdx; i++) {
     const char* texType = self->textures[i]->type;
     char numStr[3];
     u8 uniformStrLength;
@@ -193,17 +221,6 @@ void objectDraw(const Object* self, const Camera* camera, vec3s translation, ver
   objectSetVec3Unifrom(self, "camPos", shader, camera->position);
   objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "cam", shader);
 
-  mat4s trans = GLMS_MAT4_IDENTITY_INIT;
-  mat4s rot = GLMS_MAT4_IDENTITY_INIT;
-  mat4s sca = GLMS_MAT4_IDENTITY_INIT;
-
-  trans = glms_translate(trans, translation);
-  glm_quat_mat4(rotation.raw, rot.raw);
-  glm_scale(sca.raw, scale.raw);
-
-  glUniformMatrix4fv(glGetUniformLocation(shader, "translation"), 1, GL_FALSE, (const GLfloat*)trans.raw);
-  glUniformMatrix4fv(glGetUniformLocation(shader, "rotation"), 1, GL_FALSE, (const GLfloat*)rot.raw);
-  glUniformMatrix4fv(glGetUniformLocation(shader, "scale"), 1, GL_FALSE, (const GLfloat*)sca.raw);
   glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, (const GLfloat*)self->mat.raw);
 
   glDrawElements(GL_TRIANGLES, self->indSize / sizeof(self->indices[0]), GL_UNSIGNED_INT, 0);
@@ -218,7 +235,7 @@ void objectDelete(Object* self) {
   free(self->vertices);
   free(self->indices);
 
-  for (int i = 0; i < self->texsCount; i++)
+  for (int i = 0; i < self->texturesIdx; i++)
     textureDelete(self->textures[i], 1);
 }
 

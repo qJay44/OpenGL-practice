@@ -40,7 +40,7 @@ int main() {
   if (!window) {
     printf("Failed to create GFLW window\n");
     glfwTerminate();
-    return -1;
+    return EXIT_FAILURE;
   }
   glfwMakeContextCurrent(window);
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -50,7 +50,7 @@ int main() {
   int version = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
   if (!version) {
     printf("Failed to initialize GLAD\n");
-    return -1;
+    return EXIT_FAILURE;
   }
 
   glViewport(0, 0, _gWindow.width, _gWindow.height);
@@ -67,8 +67,9 @@ int main() {
   // ===== Illumination ===== //
 
   vec4s lightColor = (vec4s){1.f, 1.f, 1.f, 1.f};
-  vec3s lightPos = (vec3s){0.5f, 3.f, 0.5f};
+  vec3s lightPos = (vec3s){0.5f, 1.5f, 0.5f};
   Object lightCube = objectCreateTestLight((vec3s){lightColor.x, lightColor.y, lightColor.z});
+  objectTranslate(&lightCube, lightPos);
 
   glUseProgram(mainShader);
 	glUniform4f(glGetUniformLocation(mainShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
@@ -136,7 +137,7 @@ int main() {
     modelDraw(&model, &camera, normalsShader);
 
     glDisable(GL_CULL_FACE);
-    objectDraw(&lightCube, &camera, lightPos, (versors){0.f, 0.f, 0.f, 1.f}, (vec3s){1.f, 1.f, 1.f}, lightShader);
+    objectDraw(&lightCube, &camera, lightShader);
     glEnable(GL_CULL_FACE);
 
     glfwSwapBuffers(window);

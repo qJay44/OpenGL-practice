@@ -14,12 +14,9 @@ out DATA {
 
 uniform mat4 cam;
 uniform mat4 model;
-uniform mat4 translation;
-uniform mat4 rotation;
-uniform mat4 scale;
 
 void main() {
-  gl_Position = model * translation * rotation * scale * vec4(pos, 1.f);
+  gl_Position = model * vec4(pos, 1.f);
   data_out.normal = normal;
   data_out.color = col;
   data_out.texCoord = mat2(1.f, 0.f, 0.f, -1.f) * tex;
