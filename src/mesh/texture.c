@@ -126,6 +126,28 @@ Texture* textureCreateCubemap(const char* dirPath)  {
   return tex;
 }
 
+Texture textureCreateFramebuffer(GLenum targetType) {
+  GLuint texId;
+
+  glGenTextures(1, &texId);
+  glBindTexture(targetType, texId);
+  glTexImage2D(targetType, 0, GL_RGB, _gState.winWidth, _gState.winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+  glTexParameteri(targetType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(targetType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(targetType, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(targetType, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, targetType, texId, 0);
+
+  Texture tex;
+  tex.id = texId;
+  tex.slot = 0;
+  tex.glType = targetType,
+  strcpy_s(tex.type, sizeof(char) * 256, "FRAMEBUFFER");
+  strcpy_s(tex.name, sizeof(char) * 256, "FRAMEBUFFER_TEXTURE");
+
+  return tex;
+}
+
 void textureBind(const Texture* self) {
   glActiveTexture(GL_TEXTURE0 + self->slot);
   glBindTexture(self->glType, self->id);

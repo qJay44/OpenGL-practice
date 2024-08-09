@@ -9,6 +9,7 @@
 #include "cglm/types-struct.h"
 
 #include "camera.h"
+#include "mesh/framebuffer.h"
 #include "mesh/object.h"
 #include "mesh/shader.h"
 #include "mesh/model.h"
@@ -35,11 +36,13 @@ int main() {
   // Change cwd to where "src" directory located (since launching the executable always from the directory where its located)
   SetCurrentDirectory("../../../src");
   srand(time(NULL));
+  u32 samples = 8;
 
   // GLFW init
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+  glfwWindowHint(GLFW_SAMPLES, samples);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // Window init
@@ -63,18 +66,16 @@ int main() {
   glViewport(0, 0, _gState.winWidth, _gState.winHeight);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
+  // ========== Shaders ========== //
+
   GLint mainShader = shaderCreate("shaders/main.vert", "shaders/main.frag", "shaders/main.geom");
   GLint normalsShader = shaderCreate("shaders/main.vert", "shaders/normals.frag", "shaders/normals.geom");
   GLint skyboxShader = shaderCreate("shaders/skybox.vert", "shaders/skybox.frag", NULL);
   GLint lightShader = shaderCreate("shaders/light.vert", "shaders/light.frag", NULL);
   GLint asteroidShader = shaderCreate("shaders/asteroid.vert", "shaders/main.frag", NULL);
+  GLint framebufferShader = shaderCreate("shaders/framebuffer.vert", "shaders/framebuffer.frag", NULL);
 
-  Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
-
-  Model jupiter = modelCreate("mesh/models/jupiter");
-  modelScale(&jupiter, 0.25f);
-
-  // ===== Illumination ===== //
+  // ========== Illumination ========== //
 
   vec4s lightColor = (vec4s){1.f, 1.f, 1.f, 1.f};
   vec3s lightPos = (vec3s){0.5f, 1.5f, 0.5f};
@@ -96,6 +97,14 @@ int main() {
 	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), skybox.textures[0]->slot);
 
   // ======================== //
+
+  glUseProgram(framebufferShader);
+	glUniform1i(glGetUniformLocation(framebufferShader, "screenTexture"), 0);
+
+  Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
+
+  Model jupiter = modelCreate("mesh/models/jupiter");
+  modelScale(&jupiter, 0.25f);
 
   vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f};
 
@@ -141,6 +150,8 @@ int main() {
   // Looks really bad
   instancingAsteroids.textures[instancingAsteroids.texturesIdx++] = baseAsteroid.meshes[0].textures[0];
 
+  Framebuffer framebuffer = framebufferCreate(GL_TEXTURE_2D);
+
   double titleTimer = glfwGetTime();
   double prevTime = titleTimer;
   double currTime = prevTime;
@@ -166,6 +177,7 @@ int main() {
       titleTimer = currTime;
     }
 
+    framebufferBind(&framebuffer);
     glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -183,6 +195,9 @@ int main() {
     objectDraw(&lightCube, &camera, lightShader);
     objectDrawSkybox(&skybox, &camera, skyboxShader);
 
+    framebufferUnbind();
+    framebufferDraw(&framebuffer, framebufferShader, currTime);
+
     glEnable(GL_CULL_FACE);
 
     glfwSwapBuffers(window);
@@ -195,6 +210,7 @@ int main() {
   glDeleteProgram(normalsShader);
   glDeleteProgram(skyboxShader);
   glDeleteProgram(lightShader);
+  glDeleteProgram(framebufferShader);
 
   glfwTerminate();
 

@@ -3,6 +3,7 @@
 
 #include "../camera.h"
 #include "cglm/types-struct.h"
+
 #include "vao.h"
 #include "vbo.h"
 #include "ebo.h"

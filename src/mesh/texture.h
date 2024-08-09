@@ -11,6 +11,7 @@ typedef struct {
 
 [[nodiscard]] Texture textureCreate2D(const char* path, const char* type, u8 slot);
 [[nodiscard]] Texture* textureCreateCubemap(const char* dirPath);
+[[nodiscard]] Texture textureCreateFramebuffer(GLenum targetType);
 
 void textureBind(const Texture* self);
 void textureUnbind(GLenum texType);
