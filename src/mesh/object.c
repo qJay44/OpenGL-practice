@@ -3,33 +3,38 @@
 #include <string.h>
 
 #include "cglm/struct/affine-pre.h"
+#include "cglm/struct/cam.h"
 #include "cglm/struct/mat4.h"
 
-#include "texture.h"
 #include "vao.h"
+#include "ebo.h"
+#include "texture.h"
+#include "vbo.h"
 #include "object.h"
 
 #define CACHED_TEXTURES_LENGTH 20
 
 Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize) {
-  Object obj = {
-    .vertices = malloc(vertSize),
-    .vertSize = vertSize,
-    .indices = malloc(indSize),
-    .indSize = indSize,
-    .mat = GLMS_MAT4_IDENTITY_INIT,
-    .vao = vaoCreate(1),
-    .vbo = vboCreate(1),
-    .ebo = eboCreate(1),
-    .texturesIdx = 0,
-  };
+  Object obj;
+  obj.vertices = malloc(vertSize);
+  obj.vertSize = vertSize;
+  obj.indices = malloc(indSize);
+  obj.indSize = indSize;
+  obj.mat = (mat4s)GLMS_MAT4_IDENTITY_INIT;
+  obj.texturesIdx = 0;
+  obj.instacing = 1;
+
   memcpy((void*)obj.vertices, (void*)vertices, vertSize);
   memcpy((void*)obj.indices, (void*)indices, indSize);
 
+  obj.vao = vaoCreate(1);
+  obj.vbo = vboCreate(1, obj.vertices, obj.vertSize);
+  obj.ebo = eboCreate(1, obj.indices, obj.indSize);
+
   // Bind
   vaoBind(&obj.vao);
-  vboBind(&obj.vbo, obj.vertices, obj.vertSize);
-  eboBind(&obj.ebo, obj.indices, obj.indSize);
+  vboBind(&obj.vbo);
+  eboBind(&obj.ebo);
 
   // ===== Link attributes ===== //
 
@@ -44,9 +49,101 @@ Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t in
   // =========================== //
 
   // Unbind
+  vaoUnbind();
+  vboUnbind();
+  eboUnbind();
+
+  return obj;
+}
+
+Object objectCreateInstancing(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, mat4s* mat, size_t matSize, u32 instanceCount) {
+  Object obj = objectCreate(vertices, vertSize, indices, indSize);
+  obj.instacing = instanceCount;
+  struct VBO vboInstance = vboCreate(1, mat, matSize);
+
+  vaoBind(&obj.vao);
+  vboBind(&obj.vbo);
+  eboBind(&obj.ebo);
+  vboBind(&vboInstance);
+
+  // Can't link to a mat4 so linking four vec4's
+  vaoLinkAttrib(4, 4, GL_FLOAT, sizeof(mat4s), (void*)0);
+  vaoLinkAttrib(5, 4, GL_FLOAT, sizeof(mat4s), (void*)(1 * sizeof(vec4)));
+  vaoLinkAttrib(6, 4, GL_FLOAT, sizeof(mat4s), (void*)(2 * sizeof(vec4)));
+  vaoLinkAttrib(7, 4, GL_FLOAT, sizeof(mat4s), (void*)(3 * sizeof(vec4)));
+
+  glVertexAttribDivisor(4, 1);
+  glVertexAttribDivisor(5, 1);
+  glVertexAttribDivisor(6, 1);
+  glVertexAttribDivisor(7, 1);
+
+  vaoUnbind();
+  vboUnbind();
+  eboUnbind();
+
+  return obj;
+}
+
+Object objectCreateSkybox(const char* texDirPath) {
+  float vertices[24] = {
+    //   Coordinates
+    -1.0f, -1.0f,  1.0f,//        7--------6
+     1.0f, -1.0f,  1.0f,//       /|       /|
+     1.0f, -1.0f, -1.0f,//      4--------5 |
+    -1.0f, -1.0f, -1.0f,//      | |      | |
+    -1.0f,  1.0f,  1.0f,//      | 3------|-2
+     1.0f,  1.0f,  1.0f,//      |/       |/
+     1.0f,  1.0f, -1.0f,//      0--------1
+    -1.0f,  1.0f, -1.0f
+  };
+
+  GLuint indices[36] = {
+    // Right
+    1, 2, 6,
+    6, 5, 1,
+    // Left
+    0, 4, 7,
+    7, 3, 0,
+    // Top
+    4, 5, 6,
+    6, 7, 4,
+    // Bottom
+    0, 3, 2,
+    2, 1, 0,
+    // Back
+    0, 1, 5,
+    5, 4, 0,
+    // Front
+    3, 7, 6,
+    6, 2, 3
+  };
+
+  Object obj;
+  obj.vertices = vertices,
+  obj.vertSize = sizeof(vertices),
+  obj.indices = indices,
+  obj.indSize = sizeof(indices),
+  obj.mat = (mat4s)GLMS_MAT4_IDENTITY_INIT,
+  obj.vao = vaoCreate(1),
+  obj.vbo = vboCreate(1, obj.vertices, obj.vertSize),
+  obj.ebo = eboCreate(1, obj.indices, obj.indSize),
+  obj.texturesIdx = 0,
+  obj.instacing = 1;
+
+  // Bind
+  vaoBind(&obj.vao);
+  vboBind(&obj.vbo);
+  eboBind(&obj.ebo);
+
+  // Link attributes
+  vaoLinkAttrib(0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
+
+  // Unbind
   vboUnbind();
   vaoUnbind();
   eboUnbind();
+
+  obj.textures[obj.texturesIdx++] = textureCreateCubemap(texDirPath);
 
   return obj;
 }
@@ -145,7 +242,7 @@ void objectAddTexture(Object* self, const char* name, const char* path) {
     }
 
     assert(cachedTexturesIdx < CACHED_TEXTURES_LENGTH);
-    cachedTextures[cachedTexturesIdx++] = textureCreate(path, texType);
+    cachedTextures[cachedTexturesIdx++] = textureCreate2D(path, texType, 0);
 
     if (self->texturesIdx < OBJECT_MAX_TEXTURES)
       self->textures[self->texturesIdx++] = &cachedTextures[cachedTexturesIdx - 1];
@@ -211,8 +308,8 @@ void objectDraw(const Object* self, const Camera* camera, GLint shader) {
       sprintf(numStr, "%d", numSpecular++);
     }
 
-    char uniform[uniformStrLength + 1];
-    concat(texType, numStr, uniform, uniformStrLength * sizeof(char));
+    char uniform[uniformStrLength];
+    sprintf(uniform, "%s%s", texType, numStr);
 
     textureUnit(shader, uniform, i);
     textureBind(self->textures[i]);
@@ -221,10 +318,43 @@ void objectDraw(const Object* self, const Camera* camera, GLint shader) {
   objectSetVec3Unifrom(self, "camPos", shader, camera->position);
   objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "cam", shader);
 
-  glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, (const GLfloat*)self->mat.raw);
+  if (self->instacing == 1) {
+    glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, (const GLfloat*)self->mat.raw);
+    glDrawElements(GL_TRIANGLES, self->indSize / sizeof(self->indices[0]), GL_UNSIGNED_INT, 0);
+  } else {
+    glDrawElementsInstanced(GL_TRIANGLES, self->indSize / sizeof(self->indices[0]), GL_UNSIGNED_INT, 0, self->instacing);
+  }
 
-  glDrawElements(GL_TRIANGLES, self->indSize / sizeof(self->indices[0]), GL_UNSIGNED_INT, 0);
   vaoUnbind();
+}
+
+void objectDrawSkybox(const Object* self, const Camera* camera, GLint shader) {
+  glDepthFunc(GL_LEQUAL);
+  glUseProgram(shader);
+  mat4s view;
+  mat4s proj;
+
+  // Add empty last row and column;
+  view = glms_mat4_ins3(
+    // Cut the last row and column;
+    glms_mat4_pick3(
+      // mat4
+      glms_lookat(camera->position, glms_vec3_add(camera->position, camera->orientation), camera->up)
+    ),
+    view
+  );
+
+  proj = glms_perspective(glm_rad(camera->fov), (float)_gState.winWidth / _gState.winHeight, _gState.nearPlane, _gState.farPlane);
+
+  glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, (const GLfloat*)view.raw);
+  glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, (const GLfloat*)proj.raw);
+
+  vaoBind(&self->vao);
+  textureBind(self->textures[0]);
+
+  glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+  vaoUnbind();
+  glDepthFunc(GL_LESS);
 }
 
 void objectDelete(Object* self) {

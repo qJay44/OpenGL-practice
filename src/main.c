@@ -1,33 +1,40 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <windows.h>
 
+#include "cglm/struct/affine-pre.h"
 #include "cglm/types-struct.h"
 
+#include "camera.h"
 #include "mesh/object.h"
 #include "mesh/shader.h"
 #include "mesh/model.h"
-#include "window.h"
 #include "inputs.h"
-#include "camera.h"
-#include "utils.h"
+
+#define NUM_ASTEROIDS 500
+
+struct State _gState = {
+  .winWidth = 1200,
+  .winHeight = 720,
+  .nearPlane = 0.1f,
+  .farPlane = 100.f,
+};
 
 // Called when the window resized
 void frameBufferSizeCallback(GLFWwindow* window, int width, int height) {
   glViewport(0, 0, width, height);
   glfwSetCursorPos(window, width * 0.5f, height * 0.5f);
-  _gWindow.width = width;
-  _gWindow.height = height;
+  _gState.winWidth = width;
+  _gState.winHeight = height;
 }
 
 int main() {
   // Change cwd to where "src" directory located (since launching the executable always from the directory where its located)
   SetCurrentDirectory("../../../src");
   srand(time(NULL));
-
-  _gWindow.width = 1200;
-  _gWindow.height = 720;
 
   // GLFW init
   glfwInit();
@@ -36,7 +43,7 @@ int main() {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // Window init
-  GLFWwindow* window = glfwCreateWindow(_gWindow.width, _gWindow.height, "LearnOpenGL", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(_gState.winWidth, _gState.winHeight, "LearnOpenGL", NULL, NULL);
   if (!window) {
     printf("Failed to create GFLW window\n");
     glfwTerminate();
@@ -44,7 +51,7 @@ int main() {
   }
   glfwMakeContextCurrent(window);
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-  glfwSetCursorPos(window, _gWindow.width * 0.5f, _gWindow.height * 0.5f);
+  glfwSetCursorPos(window, _gState.winWidth * 0.5f, _gState.winHeight * 0.5f);
 
   // GLAD init
   int version = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -53,16 +60,19 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  glViewport(0, 0, _gWindow.width, _gWindow.height);
+  glViewport(0, 0, _gState.winWidth, _gState.winHeight);
   glfwSetFramebufferSizeCallback(window, frameBufferSizeCallback);
 
   GLint mainShader = shaderCreate("shaders/main.vert", "shaders/main.frag", "shaders/main.geom");
   GLint normalsShader = shaderCreate("shaders/main.vert", "shaders/normals.frag", "shaders/normals.geom");
+  GLint skyboxShader = shaderCreate("shaders/skybox.vert", "shaders/skybox.frag", NULL);
   GLint lightShader = shaderCreate("shaders/light.vert", "shaders/light.frag", NULL);
+  GLint asteroidShader = shaderCreate("shaders/asteroid.vert", "shaders/main.frag", NULL);
+
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model model = modelCreate("mesh/models/airplane/");
-  modelScale(&model, 0.5f);
+  Model jupiter = modelCreate("mesh/models/jupiter");
+  modelScale(&jupiter, 0.25f);
 
   // ===== Illumination ===== //
 
@@ -75,21 +85,61 @@ int main() {
 	glUniform4f(glGetUniformLocation(mainShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(mainShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
+  glUseProgram(asteroidShader);
+	glUniform4f(glGetUniformLocation(asteroidShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(asteroidShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+
+  // ======== Skybox ======== //
+
+  Object skybox = objectCreateSkybox("textures/skybox/cosmos");
+  glUseProgram(skyboxShader);
+	glUniform1i(glGetUniformLocation(skyboxShader, "skybox"), skybox.textures[0]->slot);
+
   // ======================== //
 
   vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f};
-  float nearPlane = 0.1f;
-  float farPlane = 100.f;
 
+  glUseProgram(mainShader);
 	glUniform3f(glGetUniformLocation(mainShader, "background"), backgroundColor.x, backgroundColor.y, backgroundColor.z);
-	glUniform1f(glGetUniformLocation(mainShader, "near"), nearPlane);
-	glUniform1f(glGetUniformLocation(mainShader, "far"), farPlane);
+	glUniform1f(glGetUniformLocation(mainShader, "near"), _gState.nearPlane);
+	glUniform1f(glGetUniformLocation(mainShader, "far"), _gState.farPlane);
 
   glEnable(GL_DEPTH_TEST);
 
   glEnable(GL_CULL_FACE);
   glCullFace(GL_FRONT);
   glFrontFace(GL_CW);
+
+  mat4s asteroidsMats[NUM_ASTEROIDS];
+  Model baseAsteroid = modelCreate("mesh/models/asteroid");
+  modelScale(&baseAsteroid, 0.1f);
+
+  for (int i = 0; i < NUM_ASTEROIDS; i++) {
+    // NOTE: Assuming these models have only 1 mesh
+
+    Object astObj = baseAsteroid.meshes[0];
+    vec3s baseDistance = {130.f, 0.f, 130.f};
+
+    // Position around Jupiter
+    vec3s pos = {sinf(rand()), 0.f, cosf(rand())};
+    glm_vec3_normalize(pos.raw);
+    glm_vec3_add(baseDistance.raw, (vec3){rand() % 80, 0.f, rand() % 80}, baseDistance.raw); // extra distance
+    glm_vec3_mul(baseDistance.raw, pos.raw, pos.raw);
+
+    asteroidsMats[i] = glms_translate(astObj.mat, pos);
+  }
+
+  Object instancingAsteroids = objectCreateInstancing(
+    baseAsteroid.meshes[0].vertices,
+    baseAsteroid.meshes[0].vertSize,
+    baseAsteroid.meshes[0].indices,
+    baseAsteroid.meshes[0].indSize,
+    asteroidsMats,
+    sizeof(asteroidsMats),
+    NUM_ASTEROIDS
+  );
+  // Looks really bad
+  instancingAsteroids.textures[instancingAsteroids.texturesIdx++] = baseAsteroid.meshes[0].textures[0];
 
   double titleTimer = glfwGetTime();
   double prevTime = titleTimer;
@@ -98,12 +148,10 @@ int main() {
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
-    static int width, height;
     static double mouseX, mouseY;
 
-    glfwGetWindowSize(window, &width, &height);
     glfwGetCursorPos(window, &mouseX, &mouseY);
-    glfwSetCursorPos(window, width * 0.5f, height * 0.5f);
+    glfwSetCursorPos(window, _gState.winWidth * 0.5f, _gState.winHeight * 0.5f);
 
     currTime = glfwGetTime();
     dt = currTime - prevTime;
@@ -111,16 +159,9 @@ int main() {
 
     // Update window title every 0.3 seconds
     if (glfwGetTime() - titleTimer >= 0.3) {
-      char fpsStr[256];
-      char dtStr[256];
       char title[256];
       u16 fps = 1. / dt;
-      sprintf(fpsStr, "%d", fps);
-      sprintf(dtStr, "%f", dt);
-      concat("FPS: ", fpsStr, title, 256);
-      concat(title, " / ", title, 256);
-      concat(title, dtStr, title, 256);
-      concat(title, " ms", title, 256);
+      sprintf(title, "FPS: %d / %f ms", fps, dt);
       glfwSetWindowTitle(window, title);
       titleTimer = currTime;
     }
@@ -128,24 +169,32 @@ int main() {
     glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    processInput(window, width, height, &camera);
+    processInput(window, &camera);
 
-    cameraMove(&camera, mouseX, mouseY, width, height);
-    cameraUpdate(&camera, 45.f, nearPlane, farPlane, (float)width / height, dt);
+    cameraMove(&camera, mouseX, mouseY);
+    cameraUpdate(&camera, dt);
 
-    modelDraw(&model, &camera, mainShader);
-    modelDraw(&model, &camera, normalsShader);
+    modelDraw(&jupiter, &camera, mainShader);
+    /* modelDraw(&jupiter, &camera, normalsShader); */
+    objectDraw(&instancingAsteroids, &camera, asteroidShader);
 
     glDisable(GL_CULL_FACE);
+
     objectDraw(&lightCube, &camera, lightShader);
+    objectDrawSkybox(&skybox, &camera, skyboxShader);
+
     glEnable(GL_CULL_FACE);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
 
-  modelDelete(&model);
+  modelDelete(&jupiter);
+
   glDeleteProgram(mainShader);
+  glDeleteProgram(normalsShader);
+  glDeleteProgram(skyboxShader);
+  glDeleteProgram(lightShader);
 
   glfwTerminate();
 

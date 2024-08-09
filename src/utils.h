@@ -7,8 +7,10 @@
 [[nodiscard]] char* readFile(const char* path, bool printContent);
 [[nodiscard]] byte* readFileBytes(const char* path, size_t* outSize);
 [[nodiscard]] char* getFileNameFromPath(const char* path);
+[[nodiscard]] char* getExtensionFromFileName(const char* path);
+[[nodiscard]] int randBetween(int min, int max);
 
-void concat(const char* s1, const char* s2, char* out, size_t outSize);
+bool listDirectoryContents(const char *sDir);
 
 void arrResizeFloat(float** arr, size_t oldSize, size_t* outNewSize);
 void arrResizeUint(u32** arr, size_t oldSize, size_t* outNewSize);

@@ -7,8 +7,9 @@ struct EBO {
   GLsizei size;
 };
 
-struct EBO eboCreate(GLsizei size);
-void eboBind(const struct EBO* self, const void* data, GLsizeiptr dataSize);
+struct EBO eboCreate(GLsizei size, const void* data, GLsizeiptr dataSize);
+
+void eboBind(const struct EBO* self);
 void eboUnbind(void);
 void eboDelete(const struct EBO* self);
 

@@ -3,7 +3,7 @@
 
 #include "camera.h"
 
-void processInput(GLFWwindow* window, int winWidth, int winHeight, Camera* camera) {
+void processInput(GLFWwindow* window, Camera* camera) {
   if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, GLFW_TRUE);
 

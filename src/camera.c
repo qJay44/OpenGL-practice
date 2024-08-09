@@ -1,31 +1,32 @@
-#include "camera.h"
 #include "cglm/struct/cam.h"
 #include "cglm/struct/mat4.h"
+
+#include "camera.h"
 
 Camera cameraCreate(vec3s pos, vec3s orientation, float sensitivity) {
   Camera camera = {
     .position = pos,
     .orientation = orientation,
     .up = {0.f, 1.f, 0.f},
-    .aspectRatio = 1.f,
     .speed = 100.f,
     .sensitivity = sensitivity,
+    .fov = 45.f,
   };
 
   return camera;
 }
 
-void cameraUpdate(Camera* self, float fov, float nearPlane, float farPlane, float aspectRatio, float dt) {
+void cameraUpdate(Camera* self, float dt) {
   mat4s view = GLMS_MAT4_IDENTITY_INIT;
   mat4s proj = GLMS_MAT4_IDENTITY_INIT;
 
-  self->aspectRatio = aspectRatio;
+  float aspectRatio = (float)_gState.winWidth / _gState.winHeight;
   self->speed *= dt;
 
   vec3s lookPos = glms_vec3_add(self->position, self->orientation);
 
   view = glms_lookat(self->position, lookPos, self->up);
-  proj = glms_perspective(glm_rad(fov), self->aspectRatio, nearPlane, farPlane);
+  proj = glms_perspective(glm_rad(self->fov), aspectRatio, _gState.nearPlane, _gState.farPlane);
 
   self->mat = glms_mat4_mul(proj, view);
 }
@@ -70,11 +71,11 @@ void cameraSetNormalSpeed(Camera* self) {
   self->speed = 3.f;
 }
 
-void cameraMove(Camera* self, double x, double y, int w, int h) {
+void cameraMove(Camera* self, double x, double y) {
   // Normalizes and shifts the coordinates of the cursor such that they begin in the middle of the screen
   // and then "transforms" them into degrees
-  float rotX = self->sensitivity * (y - h * 0.5f) / h;
-  float rotY = self->sensitivity * (x - w * 0.5f) / w;
+  float rotX = self->sensitivity * (y - _gState.winHeight * 0.5f) / _gState.winHeight;
+  float rotY = self->sensitivity * (x - _gState.winWidth * 0.5f) / _gState.winWidth;
 
   // Calculates upcoming vertical change in the Orientation
   vec3s newOrientation = glms_vec3_rotate(self->orientation, glm_rad(-rotX), glms_normalize(glms_cross(self->orientation, self->up)));

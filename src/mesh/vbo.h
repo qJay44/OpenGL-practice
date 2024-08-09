@@ -7,9 +7,9 @@ struct VBO {
   GLsizei size;
 };
 
-struct VBO vboCreate(GLsizei size);
+struct VBO vboCreate(GLsizei size, const void* data, GLsizeiptr dataSize);
 
-void vboBind(const struct VBO* self, const void* data, GLsizeiptr dataSize);
+void vboBind(const struct VBO* self);
 void vboUnbind(void);
 void vboDelete(const struct VBO* self);
 

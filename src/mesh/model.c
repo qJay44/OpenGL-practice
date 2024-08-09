@@ -23,10 +23,9 @@ static byte* getDataBin(const Model* self, size_t* outSize) {
     printf("Can't get \"uri\" from first buffer\n");
   const char* uriStr = json_object_get_string(uri);
 
-  // Folder + file
-  u32 pathLength = strlen(self->dirPath) + strlen(uriStr) + 1;
-  char path[pathLength];
-  concat(self->dirPath, uriStr, path, sizeof(char) * pathLength);
+  // Folder + / + file
+  char path[strlen(self->dirPath) + strlen(uriStr) + 1];
+  sprintf(path, "%s/%s", self->dirPath, uriStr);
 
   return readFileBytes(path, outSize);
 }
@@ -214,10 +213,9 @@ static void loadTextures(Model* self, Object* obj) {
 
     const char* uriStr = json_object_get_string(uri);
 
-    // Folder + file
-    u32 pathLength = strlen(self->dirPath) + strlen(uriStr) + 1;
-    char path[pathLength];
-    concat(self->dirPath, uriStr, path, sizeof(char) * pathLength);
+    // Folder + / + file
+    char path[strlen(self->dirPath) + strlen(uriStr) + 1];
+    sprintf(path, "%s/%s", self->dirPath, uriStr);
 
     objectAddTexture(obj, uriStr, path);
   }
@@ -300,7 +298,6 @@ static void loadMesh(Model* self, u32 idxMesh, mat4s mat) {
 
   u32 indicesCount;
   GLuint* indices = getIndices(self, json_object_array_get_idx(accessors, indAccIdx), &indicesCount);
-
 
   Object mesh = objectCreate(vertices, sizeof(float) * posVecsCount * OBJECT_VERTEX_ATTRIBUTES, indices, indicesCount * sizeof(GLuint));
   loadTextures(self, &mesh);
@@ -397,10 +394,9 @@ static void traverseNode(Model* self, u32 nextNode, mat4s matrix) {
 Model modelCreate(const char* modelDirectory) {
   static const char* sceneGLTF = "scene.gltf";
 
-  // Folder + file
-  u32 gltfPathLength = strlen(modelDirectory) + strlen(sceneGLTF) + 1;
-  char gltfPath[gltfPathLength];
-  concat(modelDirectory, sceneGLTF, gltfPath, sizeof(char) * gltfPathLength);
+  // Folder + / + file
+  char gltfPath[strlen(modelDirectory) + strlen(sceneGLTF) + 1];
+  sprintf(gltfPath, "%s/%s", modelDirectory, sceneGLTF);
 
   // Read .gltf
   char* buffer = readFile(gltfPath, false);

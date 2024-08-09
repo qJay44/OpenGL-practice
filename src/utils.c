@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <windows.h>
 
 #include "utils.h"
 
@@ -92,9 +93,56 @@ char* getFileNameFromPath(const char* path) {
   return fn;
 }
 
-void concat(const char* s1, const char* s2, char* out, size_t outSize) {
-  strcpy_s(out, outSize, s1);
-  strcat_s(out, outSize, s2);
+char* getExtensionFromFileName(const char* path) {
+  char* ext;
+  if (path == NULL)
+    printf("(getExtensionFromFileName) the given path is NULL\n");
+  (ext = strrchr(path, '.')) ? ++ext : (ext = (char*)path);
+
+  return ext;
+}
+
+int randBetween(int min, int max) {
+  return rand() % (max + 1 - min) + min;
+}
+
+bool listDirectoryContents(const char *sDir) {
+  WIN32_FIND_DATA fdFile;
+  HANDLE hFind = NULL;
+
+  char sPath[2048];
+
+  //Specify a file mask. *.* = We want everything!
+  sprintf(sPath, "%s\\*.*", sDir);
+
+  if((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE) {
+    printf("Path not found: [%s]\n", sDir);
+    return false;
+  }
+
+  do {
+    //Find first file will always return "."
+    //    and ".." as the first two directories.
+    if(strcmp(fdFile.cFileName, ".") != 0
+    && strcmp(fdFile.cFileName, "..") != 0) {
+      //Build up our file path using the passed in
+      //  [sDir] and the file/foldername we just found:
+      sprintf(sPath, "%s\\%s", sDir, fdFile.cFileName);
+
+      //Is the entity a File or Folder?
+      if(fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        printf("Directory: %s\n", sPath);
+        listDirectoryContents(sPath); //Recursion, I love it!
+      }
+      else{
+        printf("File: %s\n", sPath);
+      }
+    }
+  } while(FindNextFile(hFind, &fdFile)); //Find the next file.
+
+  FindClose(hFind); //Always, Always, clean things up!
+
+  return true;
 }
 
 void arrResizeFloat(float** arr, size_t oldSize, size_t* outNewSize) {

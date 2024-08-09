@@ -22,13 +22,16 @@ typedef struct {
   struct EBO ebo;
 
   mat4s mat;
+  u32 instacing;
 
   Texture* textures[OBJECT_MAX_TEXTURES];
   u32 texturesIdx;
 } Object;
 
 [[nodiscard]] Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize);
+[[nodiscard]] Object objectCreateInstancing(float* vertices, size_t vertSize, GLuint* indices, size_t indSize, mat4s* mat, size_t matSize, u32 instanceCount);
 [[nodiscard]] Object objectCreateTestPyramid(void);
+[[nodiscard]] Object objectCreateSkybox(const char* dirPath);
 [[nodiscard]] Object objectCreateTestLight(vec3s color);
 
 void objectAddTexture(Object* self, const char* name, const char* path);
@@ -39,6 +42,7 @@ void objectSetVec4Unifrom(const Object* self, const char* name, GLint shader, ve
 void objectSetTextureUnifrom(const Object* self, const char* name, GLint shader, GLuint slot);
 void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name, GLint shader);
 void objectDraw(const Object* self, const Camera* camera, GLint shader);
+void objectDrawSkybox(const Object* self, const Camera* camera, GLint shader);
 void objectDelete(Object* self);
 
 #endif
