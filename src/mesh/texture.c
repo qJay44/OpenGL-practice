@@ -131,7 +131,12 @@ Texture textureCreateFramebuffer(GLenum targetType) {
 
   glGenTextures(1, &texId);
   glBindTexture(targetType, texId);
-  glTexImage2D(targetType, 0, GL_RGB, _gState.winWidth, _gState.winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+  if (targetType == GL_TEXTURE_2D_MULTISAMPLE)
+    glTexImage2DMultisample(targetType, _gState.aaSamples, GL_RGB, _gState.winWidth, _gState.winHeight, GL_TRUE);
+  else
+    glTexImage2D(targetType, 0, GL_RGB, _gState.winWidth, _gState.winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
   glTexParameteri(targetType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(targetType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(targetType, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

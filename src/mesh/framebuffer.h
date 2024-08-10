@@ -2,24 +2,24 @@
 #define FRAMEBUFFER_H
 
 #include "fbo.h"
-#include "rbo.h"
 #include "texture.h"
+
+#define FRAMEBUFFER_T_DEFAULT     GL_TEXTURE_2D
+#define FRAMEBUFFER_T_MULTISAMPLE GL_TEXTURE_2D_MULTISAMPLE
 
 typedef struct {
   struct FBO fbo;
-  struct RBO rbo;
-
   Texture texture;
+  int glType;
 } Framebuffer;
 
 [[nodiscard]]
-Framebuffer framebufferCreate(GLenum targetType, bool createRBO);
+Framebuffer framebufferCreate(GLenum fbType);
 
 void framebufferBind(const Framebuffer* self);
-void framebufferBindRead(const Framebuffer* self);
-void framebufferBindDraw(const Framebuffer* self);
+void framebufferBindMultiSample(const Framebuffer* fbMultiSample, const Framebuffer* fbDefault);
 void framebufferUnbind(void);
-void framebufferUse(const Framebuffer* self, GLint shader, double time);
+void framebufferDraw(const Framebuffer* self, GLint shader, const struct VAO* vao, u32 vertCount, double time);
 
 #endif
 

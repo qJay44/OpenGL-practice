@@ -11,6 +11,7 @@
 #include "camera.h"
 #include "mesh/framebuffer.h"
 #include "mesh/object.h"
+#include "mesh/rbo.h"
 #include "mesh/shader.h"
 #include "mesh/model.h"
 #include "inputs.h"
@@ -178,15 +179,16 @@ int main() {
 
   // =========================================================== //
 
+  struct RBO rbo = rboCreate(1, GL_TEXTURE_2D_MULTISAMPLE);
+  Framebuffer framebufferMS = framebufferCreate(FRAMEBUFFER_T_MULTISAMPLE);
+  Framebuffer framebuffer = framebufferCreate(FRAMEBUFFER_T_DEFAULT);
+
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_MULTISAMPLE);
 
   glEnable(GL_CULL_FACE);
   glCullFace(GL_FRONT);
   glFrontFace(GL_CW);
-
-  Framebuffer framebuffer = framebufferCreate(GL_TEXTURE_2D_MULTISAMPLE, true);
-  Framebuffer postProccesingFramebuffer = framebufferCreate(GL_TEXTURE_2D, false);
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -208,7 +210,7 @@ int main() {
       titleTimer = currTime;
     }
 
-    framebufferBind(&postProccesingFramebuffer);
+    framebufferBind(&framebufferMS);
     glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -226,21 +228,11 @@ int main() {
     objectDraw(&lightCube, &camera, lightShader);
     objectDrawSkybox(&skybox, &camera, skyboxShader);
 
-    framebufferBindRead(&framebuffer);
-    framebufferBindDraw(&postProccesingFramebuffer);
-    glBlitFramebuffer(0, 0, _gState.winWidth, _gState.winHeight, 0, 0, _gState.winWidth, _gState.winHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    framebufferUnbind();
+    framebufferBindMultiSample(&framebufferMS, &framebuffer);
+    framebufferUnbind(); // Activating the default framebuffer
 
     // Draw on the default framebuffer with the texture from the framebuffer before
-    glUseProgram(framebufferShader);
-    glUniform1i(glGetUniformLocation(framebufferShader, "winWidth"), _gState.winWidth);
-    glUniform1i(glGetUniformLocation(framebufferShader, "winHeight"), _gState.winHeight);
-    glUniform1f(glGetUniformLocation(framebufferShader, "time"), currTime);
-    glDisable(GL_DEPTH_TEST);
-    vaoBind(&vaoRect);
-    framebufferUse(&postProccesingFramebuffer, framebufferShader, currTime);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glEnable(GL_DEPTH_TEST);
+    framebufferDraw(&framebuffer, framebufferShader, &vaoRect, sizeof(rectangleVertices) / sizeof(rectangleVertices[0]), currTime);
 
     glEnable(GL_CULL_FACE);
 
