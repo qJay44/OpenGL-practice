@@ -9,7 +9,7 @@ struct FBO {
 [[nodiscard]]
 struct FBO fboCreate(GLsizei size);
 
-void fboBind(const struct FBO* self);
+void fboBind(GLenum target,const struct FBO* self);
 void fboUnbind(void);
 void fboDelete(const struct FBO* self);
 

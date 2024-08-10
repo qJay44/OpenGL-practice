@@ -8,8 +8,8 @@ struct FBO fboCreate(GLsizei size) {
   return fbo;
 }
 
-void fboBind(const struct FBO* self) {
-  glBindFramebuffer(GL_FRAMEBUFFER, self->id);
+void fboBind(GLenum target, const struct FBO* self) {
+  glBindFramebuffer(target, self->id);
 }
 
 void fboUnbind(void) {

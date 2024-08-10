@@ -7,7 +7,7 @@ struct RBO {
 };
 
 [[nodiscard]]
-struct RBO rboCreate(GLsizei size);
+struct RBO rboCreate(GLsizei size, GLenum targetType);
 
 void rboBind(const struct RBO* self);
 void rboUnbind(void);

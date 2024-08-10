@@ -14,6 +14,7 @@
 #include "mesh/shader.h"
 #include "mesh/model.h"
 #include "inputs.h"
+#include "mesh/vao.h"
 
 #define NUM_ASTEROIDS 500
 
@@ -22,6 +23,7 @@ struct State _gState = {
   .winHeight = 720,
   .nearPlane = 0.1f,
   .farPlane = 100.f,
+  .aaSamples = 8,
 };
 
 // Called when the window resized
@@ -113,12 +115,6 @@ int main() {
 	glUniform1f(glGetUniformLocation(mainShader, "near"), _gState.nearPlane);
 	glUniform1f(glGetUniformLocation(mainShader, "far"), _gState.farPlane);
 
-  glEnable(GL_DEPTH_TEST);
-
-  glEnable(GL_CULL_FACE);
-  glCullFace(GL_FRONT);
-  glFrontFace(GL_CW);
-
   mat4s asteroidsMats[NUM_ASTEROIDS];
   Model baseAsteroid = modelCreate("mesh/models/asteroid");
   modelScale(&baseAsteroid, 0.1f);
@@ -150,12 +146,47 @@ int main() {
   // Looks really bad
   instancingAsteroids.textures[instancingAsteroids.texturesIdx++] = baseAsteroid.meshes[0].textures[0];
 
-  Framebuffer framebuffer = framebufferCreate(GL_TEXTURE_2D);
-
   double titleTimer = glfwGetTime();
   double prevTime = titleTimer;
   double currTime = prevTime;
   double dt;
+
+  // ========== Rectangle for the default framebuffer ========== //
+
+  const float rectangleVertices[] = {
+    // Coords    // texCoords
+     1.0f, -1.0f,  1.0f, 0.0f,
+    -1.0f, -1.0f,  0.0f, 0.0f,
+    -1.0f,  1.0f,  0.0f, 1.0f,
+
+     1.0f,  1.0f,  1.0f, 1.0f,
+     1.0f, -1.0f,  1.0f, 0.0f,
+    -1.0f,  1.0f,  0.0f, 1.0f
+  };
+
+  struct VAO vaoRect = vaoCreate(1);
+  struct VBO vboRect = vboCreate(1, rectangleVertices, sizeof(rectangleVertices));
+
+  vaoBind(&vaoRect);
+  vboBind(&vboRect);
+
+  vaoLinkAttrib(0, 2, GL_FLOAT, 4 * sizeof(float), (void*)0);
+  vaoLinkAttrib(1, 2, GL_FLOAT, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+  vaoUnbind();
+  vboUnbind();
+
+  // =========================================================== //
+
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_MULTISAMPLE);
+
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_FRONT);
+  glFrontFace(GL_CW);
+
+  Framebuffer framebuffer = framebufferCreate(GL_TEXTURE_2D_MULTISAMPLE, true);
+  Framebuffer postProccesingFramebuffer = framebufferCreate(GL_TEXTURE_2D, false);
 
   // Render loop
   while (!glfwWindowShouldClose(window)) {
@@ -177,7 +208,7 @@ int main() {
       titleTimer = currTime;
     }
 
-    framebufferBind(&framebuffer);
+    framebufferBind(&postProccesingFramebuffer);
     glClearColor(backgroundColor.x, backgroundColor.y, backgroundColor.z, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -195,8 +226,21 @@ int main() {
     objectDraw(&lightCube, &camera, lightShader);
     objectDrawSkybox(&skybox, &camera, skyboxShader);
 
+    framebufferBindRead(&framebuffer);
+    framebufferBindDraw(&postProccesingFramebuffer);
+    glBlitFramebuffer(0, 0, _gState.winWidth, _gState.winHeight, 0, 0, _gState.winWidth, _gState.winHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
     framebufferUnbind();
-    framebufferDraw(&framebuffer, framebufferShader, currTime);
+
+    // Draw on the default framebuffer with the texture from the framebuffer before
+    glUseProgram(framebufferShader);
+    glUniform1i(glGetUniformLocation(framebufferShader, "winWidth"), _gState.winWidth);
+    glUniform1i(glGetUniformLocation(framebufferShader, "winHeight"), _gState.winHeight);
+    glUniform1f(glGetUniformLocation(framebufferShader, "time"), currTime);
+    glDisable(GL_DEPTH_TEST);
+    vaoBind(&vaoRect);
+    framebufferUse(&postProccesingFramebuffer, framebufferShader, currTime);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_CULL_FACE);
 

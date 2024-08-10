@@ -6,8 +6,6 @@
 #include "texture.h"
 
 typedef struct {
-  struct VAO vaoRect;
-  struct VBO vboRect;
   struct FBO fbo;
   struct RBO rbo;
 
@@ -15,11 +13,13 @@ typedef struct {
 } Framebuffer;
 
 [[nodiscard]]
-Framebuffer framebufferCreate(GLenum targetType);
+Framebuffer framebufferCreate(GLenum targetType, bool createRBO);
 
 void framebufferBind(const Framebuffer* self);
+void framebufferBindRead(const Framebuffer* self);
+void framebufferBindDraw(const Framebuffer* self);
 void framebufferUnbind(void);
-void framebufferDraw(const Framebuffer* self, GLint shader, double time);
+void framebufferUse(const Framebuffer* self, GLint shader, double time);
 
 #endif
 

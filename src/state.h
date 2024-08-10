@@ -4,6 +4,7 @@
 struct State {
   int winWidth, winHeight;
   const float nearPlane, farPlane;
+  u8 aaSamples;
 };
 
 extern struct State _gState;

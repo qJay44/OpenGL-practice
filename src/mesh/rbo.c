@@ -1,18 +1,18 @@
 #include "rbo.h"
-#include <stdio.h>
 
-struct RBO rboCreate(GLsizei size) {
+struct RBO rboCreate(GLsizei size, GLenum targetType) {
   struct RBO rbo;
   glGenRenderbuffers(size, &rbo.id);
   rbo.size = size;
 
   rboBind(&rbo);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, _gState.winWidth, _gState.winHeight);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo.id);
 
-  GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
-    printf("Framebuffer error: %d\n", fboStatus);
+  if (targetType == GL_TEXTURE_2D_MULTISAMPLE)
+    glRenderbufferStorageMultisample(GL_RENDERBUFFER, _gState.aaSamples, GL_DEPTH24_STENCIL8,  _gState.winWidth, _gState.winHeight);
+  else
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, _gState.winWidth, _gState.winHeight);
+
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo.id);
 
   return rbo;
 }
