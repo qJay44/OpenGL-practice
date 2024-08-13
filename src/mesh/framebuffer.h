@@ -4,19 +4,15 @@
 #include "fbo.h"
 #include "texture.h"
 
-enum FramebufferEnum : GLenum {
-  FRAMEBUFFER_DEFAULT     = GL_TEXTURE_2D,
-  FRAMEBUFFER_MULTISAMPLE = GL_TEXTURE_2D_MULTISAMPLE
-};
-
 typedef struct {
   struct FBO fbo;
   Texture texture;
   int glType;
 } Framebuffer;
 
-[[nodiscard]]
-Framebuffer framebufferCreate(enum FramebufferEnum fbType);
+[[nodiscard]] Framebuffer framebufferCreate(void);
+[[nodiscard]] Framebuffer framebufferCreateMSAA(void);
+[[nodiscard]] Framebuffer framebufferCreateShadowMap(int w, int h);
 
 void framebufferBind(const Framebuffer* self);
 void framebufferBindReadDraw(const Framebuffer* read, const Framebuffer* draw);

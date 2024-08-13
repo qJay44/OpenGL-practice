@@ -10,16 +10,20 @@ out DATA {
   vec3 color;
   vec2 texCoord;
   mat4 projection;
+  vec4 fragPosLight;
 } data_out;
 
 uniform mat4 cam;
 uniform mat4 model;
+uniform mat4 lightProj;
 
 void main() {
-  gl_Position = model * vec4(pos, 1.f);
+  vec4 currPos = model * vec4(pos, 1.f);
+  gl_Position = currPos;
   data_out.normal = normal;
   data_out.color = col;
   data_out.texCoord = mat2(1.f, 0.f, 0.f, -1.f) * tex;
   data_out.projection = cam;
+  data_out.fragPosLight = lightProj * currPos;
 }
 

@@ -1,22 +1,57 @@
 #include "framebuffer.h"
 
-#include <assert.h>
+#include <stdio.h>
 
 #include "fbo.h"
 #include "texture.h"
 
-Framebuffer framebufferCreate(enum FramebufferEnum fbType) {
+static void status() {
+  GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
+    printf("Framebuffer error: %d\n", fboStatus);
+}
+
+Framebuffer framebufferCreate(void) {
   Framebuffer fb;
 
   fb.fbo = fboCreate(1);
   fboBind(GL_FRAMEBUFFER, &fb.fbo);
-  fb.texture = textureCreateFramebuffer(fbType);
-  fb.glType = fbType;
+  fb.glType = GL_TEXTURE_2D;
+  fb.texture = textureCreateFramebuffer(fb.glType);
 
-  GLenum fboStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if (fboStatus != GL_FRAMEBUFFER_COMPLETE)
-    printf("Framebuffer error: %d\n", fboStatus);
+  status();
+  fboUnbind();
 
+  return fb;
+}
+
+Framebuffer framebufferCreateMSAA(void) {
+  Framebuffer fb;
+
+  fb.fbo = fboCreate(1);
+  fboBind(GL_FRAMEBUFFER, &fb.fbo);
+  fb.glType = GL_TEXTURE_2D_MULTISAMPLE;
+  fb.texture = textureCreateFramebuffer(fb.glType);
+
+  status();
+  fboUnbind();
+
+  return fb;
+}
+
+Framebuffer framebufferCreateShadowMap(int w, int h) {
+  Framebuffer fb;
+
+  fb.fbo = fboCreate(1);
+  fb.texture = textureCreateShadowMap(w, h);
+  textureBind(&fb.texture);
+  fboBind(GL_FRAMEBUFFER, &fb.fbo);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fb.texture.id, 0);
+  glDrawBuffer(GL_NONE);
+  glReadBuffer(GL_NONE);
+  fb.glType = GL_TEXTURE_2D;
+
+  status();
   fboUnbind();
 
   return fb;
@@ -27,8 +62,6 @@ void framebufferBind(const Framebuffer* self) {
 }
 
 void framebufferBindReadDraw(const Framebuffer* read, const Framebuffer* draw) {
-  assert(fbMultiSample->type == FRAMEBUFFER_MS);
-
   fboBind(GL_READ_FRAMEBUFFER, &read->fbo);
   fboBind(GL_DRAW_FRAMEBUFFER, &draw->fbo);
   glBlitFramebuffer(0, 0, _gState.winWidth, _gState.winHeight, 0, 0, _gState.winWidth, _gState.winHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST);

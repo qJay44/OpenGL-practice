@@ -5,6 +5,9 @@
 #include <time.h>
 #include <windows.h>
 
+#include "cglm/struct/cam.h"
+#include "cglm/struct/mat4.h"
+#include "cglm/struct/vec3.h"
 #include "cglm/types-struct.h"
 
 #include "camera.h"
@@ -14,6 +17,7 @@
 #include "mesh/shader.h"
 #include "mesh/model.h"
 #include "inputs.h"
+#include "mesh/texture.h"
 #include "mesh/vao.h"
 
 #define NUM_ASTEROIDS 500
@@ -76,6 +80,7 @@ int main() {
   GLint normalsShader = shaderCreate("shaders/main.vert", "shaders/normals.frag", "shaders/normals.geom");
   GLint lightShader = shaderCreate("shaders/light.vert", "shaders/light.frag", NULL);
   GLint framebufferShader = shaderCreate("shaders/framebuffer.vert", "shaders/framebuffer.frag", NULL);
+  GLint shadowMapShader = shaderCreate("shaders/shadowMap.vert", "shaders/shadowMap.frag", NULL);
 
   // ========== Illumination ========== //
 
@@ -92,7 +97,7 @@ int main() {
 
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model model = modelCreate("mesh/models/airplane");
+  Model model = modelCreate("mesh/models/crow");
   modelScale(&model, 0.25f);
 
   vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f};
@@ -129,15 +134,26 @@ int main() {
 
   // =========================================================== //
 
+  int shadowMapWidth = 2048;
+  int shadowMapHeight = 2048;
+
   // NOTE: Order matters
-  Framebuffer framebufferMS = framebufferCreate(FRAMEBUFFER_MULTISAMPLE);
-  framebufferBind(&framebufferMS);
+  Framebuffer framebufferMSAA = framebufferCreateMSAA();
+  framebufferBind(&framebufferMSAA);
   struct RBO rbo = rboCreate(1, GL_TEXTURE_2D_MULTISAMPLE);
-  Framebuffer framebuffer = framebufferCreate(FRAMEBUFFER_DEFAULT);
+  Framebuffer framebuffer = framebufferCreate();
+  Framebuffer framebufferShadowMap = framebufferCreateShadowMap(shadowMapWidth, shadowMapHeight);
 
   glUseProgram(framebufferShader);
-	glUniform1i(glGetUniformLocation(framebufferShader, "screenTexture"), framebufferMS.texture.unit);
+	glUniform1i(glGetUniformLocation(framebufferShader, "screenTexture"), framebufferMSAA.texture.unit);
 	glUniform1i(glGetUniformLocation(framebufferShader, "gamma"), _gState.gamma);
+
+  mat4s orthgonalProjection = glms_ortho(-35.f, 35.f, -35.f, 35.f, 0.1f, 75.f);
+  mat4s lightView = glms_lookat(glms_vec3_scale(lightPos, 20.f), (vec3s){0.f, 0.f, 0.f}, (vec3s){0.f, 1.f, 0.f});
+  mat4s lightProjection = glms_mat4_mul(orthgonalProjection, lightView);
+
+  glUseProgram(shadowMapShader);
+  glUniformMatrix4fv(glGetUniformLocation(shadowMapShader, "lightProj"), 1, GL_FALSE, (const GLfloat*)lightProjection.raw);
 
   double titleTimer = glfwGetTime();
   double prevTime = titleTimer;
@@ -172,7 +188,18 @@ int main() {
       titleTimer = currTime;
     }
 
-    framebufferBind(&framebufferMS);
+    // Draw model for the shadow map
+    glViewport(0, 0, shadowMapWidth, shadowMapHeight);
+    framebufferBind(&framebufferShadowMap);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    modelDraw(&model, &camera, shadowMapShader);
+
+    // Back to the default framebuffer
+    framebufferUnbind();
+    glViewport(0, 0, _gState.winWidth, _gState.winHeight);
+
+    // Bind MSAA framebuffer
+    framebufferBind(&framebufferMSAA);
     glClearColor(powf(backgroundColor.x, _gState.gamma), powf(backgroundColor.y, _gState.gamma), powf(backgroundColor.z, _gState.gamma), 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -181,15 +208,19 @@ int main() {
     cameraMove(&camera, mouseX, mouseY);
     cameraUpdate(&camera, dt);
 
+    glUseProgram(mainShader);
+    textureBind(&framebufferShadowMap.texture);
+    glUniform1i(glGetUniformLocation(mainShader, "shadowMap") , framebufferShadowMap.texture.unit);
+    glUniformMatrix4fv(glGetUniformLocation(mainShader, "lightProj"), 1, GL_FALSE, (const GLfloat*)lightProjection.raw);
+
     modelDraw(&model, &camera, mainShader);
 
     glDisable(GL_CULL_FACE);
 
     objectDraw(&lightCube, &camera, lightShader);
 
-    framebufferBindReadDraw(&framebufferMS, &framebuffer);
-    framebufferUnbind(); // Activating the default framebuffer
-    // Draw on the default framebuffer with the texture from the framebuffer before
+    framebufferBindReadDraw(&framebufferMSAA, &framebuffer);
+    framebufferUnbind();
     framebufferDraw(&framebuffer, framebufferShader, &vaoRect, sizeof(rectangleVertices) / sizeof(rectangleVertices[0]));
 
     glEnable(GL_CULL_FACE);

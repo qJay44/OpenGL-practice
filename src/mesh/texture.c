@@ -168,6 +168,30 @@ Texture textureCreateFramebuffer(GLenum targetType) {
   return tex;
 }
 
+Texture textureCreateShadowMap(int w, int h) {
+  GLuint texId;
+	glGenTextures(1, &texId);
+	glBindTexture(GL_TEXTURE_2D, texId);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+  float clampColor[] = {1.f, 1.f, 1.f, 1.f};
+  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, clampColor);
+
+  Texture tex;
+  tex.id = texId;
+  tex.glType = GL_TEXTURE_2D,
+  tex.unit = unit2D++;
+  tex.type = TEXTURE_SHADOWMAP;
+  sprintf(tex.name, "%s", "SHADOWMAP");
+
+  textureUnbind(GL_TEXTURE_2D);
+
+  return tex;
+}
+
 void textureBind(const Texture* self) {
   glActiveTexture(GL_TEXTURE0 + self->unit);
   glBindTexture(self->glType, self->id);
