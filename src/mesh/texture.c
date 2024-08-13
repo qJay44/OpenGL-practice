@@ -1,12 +1,15 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <windows.h>
 
 #include "texture.h"
 
-Texture textureCreate2D(const char* path, const char* type, u8 slot) {
-  assert(slot < GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+static u8 unit2D = 0;
+
+Texture textureCreate2D(const char* path, enum TextureEnum type) {
+  assert(unit2D < GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS);
 
   int imgWidth, imgHeight, imgColorChannels;
   stbi_set_flip_vertically_on_load(true);
@@ -14,7 +17,7 @@ Texture textureCreate2D(const char* path, const char* type, u8 slot) {
 
   GLuint textureId;
   glGenTextures(1, &textureId);
-  glActiveTexture(GL_TEXTURE0 + slot);
+  glActiveTexture(GL_TEXTURE0 + unit2D);
   glBindTexture(GL_TEXTURE_2D, textureId);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -23,28 +26,31 @@ Texture textureCreate2D(const char* path, const char* type, u8 slot) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-  GLenum imgChannel;
   switch (imgColorChannels) {
-    case 1: imgChannel = GL_RED; break;
-    case 3: imgChannel = GL_RGB; break;
-    case 4: imgChannel = GL_RGBA; break;
+    case 1:
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, imgWidth, imgHeight, 0, GL_RED, GL_UNSIGNED_BYTE, imgBytes);
+      break;
+    case 3:
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, imgWidth, imgHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, imgBytes);
+      break;
+    case 4:
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBytes);
+      break;
     default:
-      printf("Unhandled texture image color channels type (%d)\n", imgChannel);
+      printf("Unhandled texture image color channels type (%d)\n", imgColorChannels);
       printf("Path: %s\n", path);
       printf("stbi_failure_reason: %s\n", stbi_failure_reason());
       exit(EXIT_FAILURE);
   }
 
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, imgWidth, imgHeight, 0, imgChannel, GL_UNSIGNED_BYTE, imgBytes);
-
   glGenerateMipmap(GL_TEXTURE_2D);
 
   Texture tex;
   tex.id = textureId;
-  tex.slot = slot;
+  tex.unit = unit2D++;
   tex.glType = GL_TEXTURE_2D,
-  strcpy_s(tex.type, sizeof(char) * 256, type);
-  strcpy_s(tex.name, sizeof(char) * 256, getFileNameFromPath(path));
+  tex.type = type;
+  sprintf(tex.name, "%s", getFileNameFromPath(path));
 
   stbi_image_free(imgBytes);
   textureUnbind(GL_TEXTURE_2D);
@@ -118,24 +124,32 @@ Texture* textureCreateCubemap(const char* dirPath)  {
 
   Texture* tex = malloc(sizeof(Texture)); // Freeing in "textureDelete"
   tex->id = cubemap;
-  tex->slot = 0;
+  tex->unit = 0;
   tex->glType = GL_TEXTURE_CUBE_MAP,
-  strcpy_s(tex->type, sizeof(char) * 256, "CUBEMAP");
-  strcpy_s(tex->name, sizeof(char) * 256, getFileNameFromPath(dirPath));
+  tex->type = TEXTURE_CUBEMAP;
+  sprintf(tex->name, "%s", "CUBEMAP");
 
   return tex;
 }
 
 Texture textureCreateFramebuffer(GLenum targetType) {
   GLuint texId;
+  Texture tex;
 
   glGenTextures(1, &texId);
   glBindTexture(targetType, texId);
 
-  if (targetType == GL_TEXTURE_2D_MULTISAMPLE)
-    glTexImage2DMultisample(targetType, _gState.aaSamples, GL_RGB, _gState.winWidth, _gState.winHeight, GL_TRUE);
-  else
-    glTexImage2D(targetType, 0, GL_RGB, _gState.winWidth, _gState.winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+  switch (targetType) {
+    case GL_TEXTURE_2D_MULTISAMPLE:
+      glTexImage2DMultisample(targetType, _gState.aaSamples, GL_RGB16F, _gState.winWidth, _gState.winHeight, GL_TRUE);
+      break;
+    case GL_TEXTURE_2D:
+      glTexImage2D(targetType, 0, GL_RGB16F, _gState.winWidth, _gState.winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+      break;
+    default:
+      printf("(textureCreateFramebuffer): Unhandled targetType\n");
+      exit(EXIT_FAILURE);
+  }
 
   glTexParameteri(targetType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(targetType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -143,18 +157,19 @@ Texture textureCreateFramebuffer(GLenum targetType) {
   glTexParameteri(targetType, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, targetType, texId, 0);
 
-  Texture tex;
   tex.id = texId;
-  tex.slot = 0;
   tex.glType = targetType,
-  strcpy_s(tex.type, sizeof(char) * 256, "FRAMEBUFFER");
-  strcpy_s(tex.name, sizeof(char) * 256, "FRAMEBUFFER_TEXTURE");
+  tex.unit = 0;
+  tex.type = TEXTURE_FRAMEBUFFER;
+  sprintf(tex.name, "%s", "FRAMEBUFFER");
+
+  textureUnbind(targetType);
 
   return tex;
 }
 
 void textureBind(const Texture* self) {
-  glActiveTexture(GL_TEXTURE0 + self->slot);
+  glActiveTexture(GL_TEXTURE0 + self->unit);
   glBindTexture(self->glType, self->id);
 }
 
@@ -162,10 +177,9 @@ void textureUnbind(GLenum texType) {
   glBindTexture(texType, 0);
 }
 
-void textureUnit(GLint shader, const char* uniform, GLuint unit) {
-  GLuint texUni = glGetUniformLocation(shader, uniform);
+void textureSetUniform(GLint shader, const char* uniform, GLuint unit) {
   glUseProgram(shader);
-  glUniform1i(texUni, unit);
+  glUniform1i(glGetUniformLocation(shader, uniform), unit);
 }
 
 void textureDelete(Texture* self, GLsizei num) {

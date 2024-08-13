@@ -8,6 +8,7 @@ uniform sampler2D screenTexture;
 uniform int winWidth;
 uniform int winHeight;
 uniform float time;
+uniform float gamma;
 
 float offsetX = 1.f / winWidth;
 float offsetY = 1.f / winWidth;
@@ -25,12 +26,15 @@ float kernel[9] = float[] (
 );
 
 void main() {
-  vec3 color = vec3(0.0f);
-  for(int i = 0; i < 9; i++)
-    color += vec3(texture(screenTexture, texCoord.st + offsets[i])) * kernel[i];
-  color.r *= sin(time);
-  color.g *= cos(time);
-  color.b *= sin(time);
-  FragColor = vec4(color, 1.0f);
+  //vec3 color = vec3(0.0f);
+  //for(int i = 0; i < 9; i++)
+  //  color += vec3(texture(screenTexture, texCoord.st + offsets[i])) * kernel[i];
+  //color.r *= sin(time);
+  //color.g *= cos(time);
+  //color.b *= sin(time);
+  //FragColor = vec4(color, 1.0f);
+
+  vec4 fragment = texture(screenTexture, texCoord);
+  FragColor.rgb = pow(fragment.rgb, vec3(1.f / gamma));
 }
 

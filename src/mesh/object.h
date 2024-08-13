@@ -37,11 +37,6 @@ typedef struct {
 
 void objectAddTexture(Object* self, const char* name, const char* path);
 void objectTranslate(Object* self, vec3s v);
-void objectSetMatrixUniform(const Object* self, const char* name, GLint shader);
-void objectSetVec3Unifrom(const Object* self, const char* name, GLint shader, vec3s v);
-void objectSetVec4Unifrom(const Object* self, const char* name, GLint shader, vec4s v);
-void objectSetTextureUnifrom(const Object* self, const char* name, GLint shader, GLuint slot);
-void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name, GLint shader);
 void objectDraw(const Object* self, const Camera* camera, GLint shader);
 void objectDrawSkybox(const Object* self, const Camera* camera, GLint shader);
 void objectDelete(Object* self);

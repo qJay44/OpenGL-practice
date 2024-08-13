@@ -4,8 +4,10 @@
 #include "fbo.h"
 #include "texture.h"
 
-#define FRAMEBUFFER_T_DEFAULT     GL_TEXTURE_2D
-#define FRAMEBUFFER_T_MULTISAMPLE GL_TEXTURE_2D_MULTISAMPLE
+enum FramebufferEnum : GLenum {
+  FRAMEBUFFER_DEFAULT     = GL_TEXTURE_2D,
+  FRAMEBUFFER_MULTISAMPLE = GL_TEXTURE_2D_MULTISAMPLE
+};
 
 typedef struct {
   struct FBO fbo;
@@ -14,12 +16,12 @@ typedef struct {
 } Framebuffer;
 
 [[nodiscard]]
-Framebuffer framebufferCreate(GLenum fbType);
+Framebuffer framebufferCreate(enum FramebufferEnum fbType);
 
 void framebufferBind(const Framebuffer* self);
-void framebufferBindMultiSample(const Framebuffer* fbMultiSample, const Framebuffer* fbDefault);
+void framebufferBindReadDraw(const Framebuffer* read, const Framebuffer* draw);
 void framebufferUnbind(void);
-void framebufferDraw(const Framebuffer* self, GLint shader, const struct VAO* vao, u32 vertCount, double time);
+void framebufferDraw(const Framebuffer* self, GLint shader, const struct VAO* vao, u32 vertCount);
 
 #endif
 

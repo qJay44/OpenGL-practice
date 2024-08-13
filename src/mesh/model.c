@@ -217,6 +217,7 @@ static void loadTextures(Model* self, Object* obj) {
     char path[strlen(self->dirPath) + strlen(uriStr) + 1];
     sprintf(path, "%s/%s", self->dirPath, uriStr);
 
+    // REVIEW: Is this always will be one of each diffuse0 and specular0?
     objectAddTexture(obj, uriStr, path);
   }
 }

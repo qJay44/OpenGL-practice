@@ -2,8 +2,10 @@
 #define WINDOW_H
 
 struct State {
-  int winWidth, winHeight;
   const float nearPlane, farPlane;
+  int winWidth, winHeight;
+  float gamma;
+  float time;
   u8 aaSamples;
 };
 

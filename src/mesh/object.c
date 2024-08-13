@@ -230,19 +230,19 @@ void objectAddTexture(Object* self, const char* name, const char* path) {
   }
 
   if (!skip) {
-    char* texType;
+    enum TextureEnum texType;
 
     if (strstr(name, "baseColor") || strstr(name, "diffuse"))
-      texType = "diffuse";
+      texType = TEXTURE_DIFFUSE;
     else if (strstr(name, "metallicRoughness") || strstr(name, "specular"))
-      texType = "specular";
+      texType = TEXTURE_SPECULAR;
     else {
       printf("Unhandled texture type (%s)\n", name);
       return;
     }
 
     assert(cachedTexturesIdx < CACHED_TEXTURES_LENGTH);
-    cachedTextures[cachedTexturesIdx++] = textureCreate2D(path, texType, 0);
+    cachedTextures[cachedTexturesIdx++] = textureCreate2D(path, texType);
 
     if (self->texturesIdx < OBJECT_MAX_TEXTURES)
       self->textures[self->texturesIdx++] = &cachedTextures[cachedTexturesIdx - 1];
@@ -255,36 +255,6 @@ void objectTranslate(Object* self, vec3s v) {
   self->mat = glms_translate(self->mat, v);
 }
 
-void objectSetMatrixUniform(const Object* self, const char* name, GLint shader) {
-  glUseProgram(shader);
-  GLint loc = glGetUniformLocation(shader, name);
-  glUniformMatrix4fv(loc, 1, GL_FALSE, (const GLfloat*)&self->mat.raw);
-}
-
-void objectSetVec3Unifrom(const Object* self, const char* name, GLint shader, vec3s v) {
-  glUseProgram(shader);
-  GLint loc = glGetUniformLocation(shader, name);
-  glUniform3f(loc, v.x, v.y, v.z);
-}
-
-void objectSetVec4Unifrom(const Object* self, const char* name, GLint shader, vec4s v) {
-  glUseProgram(shader);
-  GLint loc = glGetUniformLocation(shader, name);
-  glUniform4f(loc, v.x, v.y, v.z, v.w);
-}
-
-void objectSetTextureUnifrom(const Object* self, const char* name, GLint shader, GLuint slot) {
-  glUseProgram(shader);
-  GLuint uniTex = glGetUniformLocation(shader, name);
-  glUniform1i(uniTex, slot);
-}
-
-void objectSetCameraMatrixUnifrom(const Object* self, const GLfloat* mat, const char* name, GLint shader) {
-  glUseProgram(shader);
-  GLint loc = glGetUniformLocation(shader, name);
-  glUniformMatrix4fv(loc, 1, GL_FALSE, mat);
-}
-
 void objectDraw(const Object* self, const Camera* camera, GLint shader) {
   glUseProgram(shader);
   vaoBind(&self->vao);
@@ -293,30 +263,24 @@ void objectDraw(const Object* self, const Camera* camera, GLint shader) {
   u8 numSpecular = 0;
 
   for (int i = 0; i < self->texturesIdx; i++) {
-    const char* texType = self->textures[i]->type;
-    char numStr[3];
-    u8 uniformStrLength;
-    assert(numDiffuse < 256);
-
-    // REVIEW: The shader has only diffuse0/specular0
-    if (!strcmp(texType, "diffuse")) {
-      uniformStrLength = 7 + 3;
-      sprintf(numStr, "%d", numDiffuse++);
-
-    } else if (!strcmp(texType, "specular")) {
-      uniformStrLength = 8 + 3;
-      sprintf(numStr, "%d", numSpecular++);
+    char uniform[256];
+    switch (self->textures[i]->type) {
+      case TEXTURE_DIFFUSE:
+        sprintf(uniform, "diffuse%d", numDiffuse++);
+        break;
+      case TEXTURE_SPECULAR:
+        sprintf(uniform, "specular%d", numSpecular++);
+        break;
+      default:
+        continue;
     }
 
-    char uniform[uniformStrLength];
-    sprintf(uniform, "%s%s", texType, numStr);
-
-    textureUnit(shader, uniform, i);
+    textureSetUniform(shader, uniform, i);
     textureBind(self->textures[i]);
   }
 
-  objectSetVec3Unifrom(self, "camPos", shader, camera->position);
-  objectSetCameraMatrixUnifrom(self, (const GLfloat*)camera->mat.raw, "cam", shader);
+  glUniform3f(glGetUniformLocation(shader, "camPos"), camera->position.x, camera->position.y, camera->position.y);
+  glUniformMatrix4fv(glGetUniformLocation(shader, "cam"), 1, GL_FALSE, (const GLfloat*)camera->mat.raw);
 
   if (self->instacing == 1) {
     glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, (const GLfloat*)self->mat.raw);
