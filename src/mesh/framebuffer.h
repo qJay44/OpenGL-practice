@@ -2,7 +2,11 @@
 #define FRAMEBUFFER_H
 
 #include "fbo.h"
-#include "texture.h"
+
+enum ShadowMapEnum {
+  SHADOWMAP_DEFAULT = GL_TEXTURE_2D,
+  SHADOWMAP_CUBEMAP = GL_TEXTURE_CUBE_MAP,
+};
 
 typedef struct {
   struct FBO fbo;
@@ -12,7 +16,7 @@ typedef struct {
 
 [[nodiscard]] Framebuffer framebufferCreate(void);
 [[nodiscard]] Framebuffer framebufferCreateMSAA(void);
-[[nodiscard]] Framebuffer framebufferCreateShadowMap(int w, int h);
+[[nodiscard]] Framebuffer framebufferCreateShadowMap(enum ShadowMapEnum target, int w, int h);
 
 void framebufferBind(const Framebuffer* self);
 void framebufferBindReadDraw(const Framebuffer* read, const Framebuffer* draw);

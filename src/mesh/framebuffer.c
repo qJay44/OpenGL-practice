@@ -1,6 +1,7 @@
 #include "framebuffer.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "fbo.h"
 #include "texture.h"
@@ -39,17 +40,31 @@ Framebuffer framebufferCreateMSAA(void) {
   return fb;
 }
 
-Framebuffer framebufferCreateShadowMap(int w, int h) {
+Framebuffer framebufferCreateShadowMap(enum ShadowMapEnum target, int w, int h) {
   Framebuffer fb;
 
   fb.fbo = fboCreate(1);
-  fb.texture = textureCreateShadowMap(w, h);
-  textureBind(&fb.texture);
-  fboBind(GL_FRAMEBUFFER, &fb.fbo);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fb.texture.id, 0);
+
+  switch (target) {
+    case SHADOWMAP_DEFAULT:
+      fb.texture = textureCreateShadowMap(w, h);
+      textureBind(&fb.texture);
+      fboBind(GL_FRAMEBUFFER, &fb.fbo);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fb.texture.id, 0);
+      break;
+    case SHADOWMAP_CUBEMAP:
+      fb.texture = textureCreateShadowCubeMap(w, h);
+      textureBind(&fb.texture);
+      fboBind(GL_FRAMEBUFFER, &fb.fbo);
+      glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, fb.texture.id, 0);
+      break;
+    default:
+      printf("Unhandled framebuffer shadow map target\n");
+      exit(EXIT_FAILURE);
+  }
   glDrawBuffer(GL_NONE);
   glReadBuffer(GL_NONE);
-  fb.glType = GL_TEXTURE_2D;
+  fb.glType = target;
 
   status();
   fboUnbind();

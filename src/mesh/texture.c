@@ -191,6 +191,32 @@ Texture textureCreateShadowMap(int w, int h) {
   return tex;
 }
 
+Texture textureCreateShadowCubeMap(int w, int h) {
+  GLuint texId;
+	glGenTextures(1, &texId);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, texId);
+
+	for (unsigned int i = 0; i < 6; ++i)
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+  Texture tex;
+  tex.id = texId;
+  tex.glType = GL_TEXTURE_CUBE_MAP,
+  tex.unit = unit2D++;
+  tex.type = TEXTURE_SHADOWCUBEMAP;
+  sprintf(tex.name, "%s", "SHADOWCUBEMAP");
+
+  textureUnbind(GL_TEXTURE_CUBE_MAP);
+
+  return tex;
+}
+
 void textureBind(const Texture* self) {
   glActiveTexture(GL_TEXTURE0 + self->unit);
   glBindTexture(self->glType, self->id);

@@ -7,6 +7,7 @@ enum TextureEnum : u8 {
   TEXTURE_CUBEMAP,
   TEXTURE_FRAMEBUFFER,
   TEXTURE_SHADOWMAP,
+  TEXTURE_SHADOWCUBEMAP,
 };
 
 typedef struct {
@@ -21,6 +22,7 @@ typedef struct {
 [[nodiscard]] Texture* textureCreateCubemap(const char* dirPath);
 [[nodiscard]] Texture textureCreateFramebuffer(GLenum targetType);
 [[nodiscard]] Texture textureCreateShadowMap(int w, int h);
+[[nodiscard]] Texture textureCreateShadowCubeMap(int w, int h);
 
 void textureBind(const Texture* self);
 void textureUnbind(GLenum texType);
