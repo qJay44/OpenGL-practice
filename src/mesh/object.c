@@ -12,6 +12,9 @@
 #include "vbo.h"
 #include "object.h"
 
+// My order: positions (3), colors (3), texture coords (2), normals (3)
+// Tutorial order: positions (3), normals (3), colors (3), texture coords (2)
+
 #define CACHED_TEXTURES_LENGTH 20
 
 Object objectCreate(float* vertices, size_t vertSize, GLuint* indices, size_t indSize) {
@@ -216,6 +219,22 @@ Object objectCreateTestLight(vec3s color) {
   return objectCreate(vertices, sizeof(float) * 88, indices, sizeof(GLuint) * 36);
 }
 
+Object objectCreateTestPlane(void) {
+  float vertices[44] = {
+    -1.f, 0.f,  1.f,   0.f, 0.f, 0.f,   0.f, 0.f,   0.f, 1.f, 0.f,
+    -1.f, 0.f, -1.f,   0.f, 0.f, 0.f,   0.f, 1.f,   0.f, 1.f, 0.f,
+     1.f, 0.f, -1.f,   0.f, 0.f, 0.f,   1.f, 1.f,   0.f, 1.f, 0.f,
+     1.f, 0.f,  1.f,   0.f, 0.f, 0.f,   1.f, 0.f,   0.f, 1.f, 0.f,
+  };
+
+  GLuint indices[6] = {
+    0, 1, 2,
+    0, 2, 3
+  };
+
+  return objectCreate(vertices, sizeof(float) * 44, indices, sizeof(GLuint) * 6);
+}
+
 void objectAddTexture(Object* self, const char* name, const char* path) {
   static Texture cachedTextures[CACHED_TEXTURES_LENGTH];
   static u32 cachedTexturesIdx = 0;
@@ -236,6 +255,8 @@ void objectAddTexture(Object* self, const char* name, const char* path) {
       texType = TEXTURE_DIFFUSE;
     else if (strstr(name, "metallicRoughness") || strstr(name, "specular"))
       texType = TEXTURE_SPECULAR;
+    else if (strstr(name, "normal"))
+      texType = TEXTURE_NORMAL;
     else {
       printf("Unhandled texture type (%s)\n", name);
       return;
@@ -261,6 +282,7 @@ void objectDraw(const Object* self, const Camera* camera, GLint shader) {
 
   u8 numDiffuse = 0;
   u8 numSpecular = 0;
+  u8 numNormal = 0;
 
   for (int i = 0; i < self->texturesIdx; i++) {
     char uniform[256];
@@ -271,6 +293,9 @@ void objectDraw(const Object* self, const Camera* camera, GLint shader) {
       case TEXTURE_SPECULAR:
         sprintf(uniform, "specular%d", numSpecular++);
         break;
+      case TEXTURE_NORMAL:
+        sprintf(uniform, "normal%d", numNormal++);
+        break;
       default:
         continue;
     }
@@ -279,7 +304,7 @@ void objectDraw(const Object* self, const Camera* camera, GLint shader) {
     textureBind(self->textures[i]);
   }
 
-  glUniform3f(glGetUniformLocation(shader, "camPos"), camera->position.x, camera->position.y, camera->position.y);
+  glUniform3f(glGetUniformLocation(shader, "camPosUni"), camera->position.x, camera->position.y, camera->position.y);
   glUniformMatrix4fv(glGetUniformLocation(shader, "cam"), 1, GL_FALSE, (const GLfloat*)camera->mat.raw);
 
   if (self->instacing == 1) {

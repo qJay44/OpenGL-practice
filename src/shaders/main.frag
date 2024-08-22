@@ -7,30 +7,35 @@ in vec3 color;
 in vec2 texCoord;
 in vec3 normal;
 in vec4 fragPosLight;
+in vec3 lightPos;
+in vec3 camPos;
 
 uniform vec3 background;
 uniform float near;
 uniform float far;
 uniform sampler2D diffuse0;
 uniform sampler2D specular0;
+uniform sampler2D normal0;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubeMap;
 uniform vec4 lightColor;
-uniform vec3 lightPos;
-uniform vec3 camPos;
 
 vec4 pointLight() {
+  // intensity
   vec3 lightVec = lightPos - vertPos;
   float dist = length(lightVec);
   float a = 0.0003f;
   float b = 0.00002f;
   float intensity = 1.f / (a * dist * dist + b * dist + 1.f);
+
   float ambient = 0.2f;
 
-  vec3 n = normalize(normal);
+  // diffuse lightning
+  vec3 n = normalize(texture(normal0, texCoord).xyz * 2.f - 1.f);
   vec3 lightDirection = normalize(lightVec);
   float diffuse = max(dot(n, lightDirection), 0.f);
 
+  // specular lightning
   float specular = 0.f;
   if (diffuse) {
     float specularLight = 0.5f;

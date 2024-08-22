@@ -25,22 +25,25 @@ Texture textureCreate2D(const char* path, enum TextureEnum type) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-  switch (imgColorChannels) {
-    case 1:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, imgWidth, imgHeight, 0, GL_RED, GL_UNSIGNED_BYTE, imgBytes);
-      break;
-    case 3:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, imgWidth, imgHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, imgBytes);
-      break;
-    case 4:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBytes);
-      break;
-    default:
-      printf("Unhandled texture image color channels type (%d)\n", imgColorChannels);
-      printf("Path: %s\n", path);
-      printf("stbi_failure_reason: %s\n", stbi_failure_reason());
-      exit(EXIT_FAILURE);
-  }
+  if (type == TEXTURE_NORMAL)
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBytes);
+  else
+    switch (imgColorChannels) {
+      case 1:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, imgWidth, imgHeight, 0, GL_RED, GL_UNSIGNED_BYTE, imgBytes);
+        break;
+      case 3:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB, imgWidth, imgHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, imgBytes);
+        break;
+      case 4:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB_ALPHA, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBytes);
+        break;
+      default:
+        printf("Unhandled texture image color channels type (%d)\n", imgColorChannels);
+        printf("Path: %s\n", path);
+        printf("stbi_failure_reason: %s\n", stbi_failure_reason());
+        exit(EXIT_FAILURE);
+    }
 
   glGenerateMipmap(GL_TEXTURE_2D);
 

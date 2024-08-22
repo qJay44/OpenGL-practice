@@ -42,13 +42,12 @@ int main() {
   // Change cwd to where "src" directory located (since launching the executable always from the directory where its located)
   SetCurrentDirectory("../../../src");
   srand(time(NULL));
-  u32 samples = 8;
 
   // GLFW init
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-  glfwWindowHint(GLFW_SAMPLES, samples);
+  glfwWindowHint(GLFW_SAMPLES, _gState.aaSamples);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // Window init
@@ -84,7 +83,7 @@ int main() {
   // ========== Illumination ========== //
 
   vec4s lightColor = (vec4s){1.f, 1.f, 1.f, 1.f};
-  vec3s lightPos = (vec3s){0.f, 10.f, 0.f};
+  vec3s lightPos = (vec3s){0.f, 5.f, 0.f};
   Object lightCube = objectCreateTestLight((vec3s){lightColor.x, lightColor.y, lightColor.z});
   objectTranslate(&lightCube, lightPos);
 
@@ -92,10 +91,13 @@ int main() {
 
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model model = modelCreate("mesh/models/ground");
-  Model model2 = modelCreate("mesh/models/trees");
+  /* Model model = modelCreate("mesh/models/ground"); */
+  /* Model model2 = modelCreate("mesh/models/trees"); */
   /* modelScale(&model, 0.5f); */
   /* modelScale(&model2, 0.5f); */
+  Object plane = objectCreateTestPlane();
+  objectAddTexture(&plane, "diffuseDefault", "textures/diffuse.png");
+  objectAddTexture(&plane, "normalDefault", "textures/normal.png");
 
   vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f};
 
@@ -164,7 +166,7 @@ int main() {
 	glUniform1f(glGetUniformLocation(mainShader, "near"), _gState.nearPlane);
 	glUniform1f(glGetUniformLocation(mainShader, "far"), _gState.farPlane);
 	glUniform4f(glGetUniformLocation(mainShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(mainShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(glGetUniformLocation(mainShader, "lightPosUni"), lightPos.x, lightPos.y, lightPos.z);
   glUniformMatrix4fv(glGetUniformLocation(mainShader, "lightProj"), 1, GL_FALSE, (const GLfloat*)lightProjection.raw);
 
   glUseProgram(shadowCubeMapShader);
@@ -174,7 +176,7 @@ int main() {
   glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[3]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[3].raw);
   glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[4]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[4].raw);
   glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[5]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[5].raw);
-	glUniform3f(glGetUniformLocation(shadowCubeMapShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(glGetUniformLocation(shadowCubeMapShader, "lightPosUni"), lightPos.x, lightPos.y, lightPos.z);
 	glUniform1f(glGetUniformLocation(shadowCubeMapShader, "far"), _gState.farPlane);
 
   double titleTimer = glfwGetTime();
@@ -214,8 +216,8 @@ int main() {
     glViewport(0, 0, shadowMapWidth, shadowMapHeight);
     framebufferBind(&framebufferPointShadowMap);
     glClear(GL_DEPTH_BUFFER_BIT);
-    modelDraw(&model, &camera, shadowCubeMapShader);
-    modelDraw(&model2, &camera, shadowCubeMapShader);
+    /* modelDraw(&model, &camera, shadowCubeMapShader); */
+    /* modelDraw(&model2, &camera, shadowCubeMapShader); */
 
     // Back to the default framebuffer
     framebufferUnbind();
@@ -235,11 +237,12 @@ int main() {
     textureBind(&framebufferPointShadowMap.texture);
     glUniform1i(glGetUniformLocation(mainShader, "shadowCubeMap") , framebufferPointShadowMap.texture.unit);
 
-    modelDraw(&model, &camera, mainShader);
-    modelDraw(&model2, &camera, mainShader);
+    /* modelDraw(&model, &camera, mainShader); */
+    /* modelDraw(&model2, &camera, mainShader); */
 
     glDisable(GL_CULL_FACE);
 
+    objectDraw(&plane, &camera, mainShader);
     objectDraw(&lightCube, &camera, lightShader);
 
     framebufferBindReadDraw(&framebufferMSAA, &framebuffer);
@@ -251,11 +254,6 @@ int main() {
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
-
-  glDeleteProgram(mainShader);
-  glDeleteProgram(normalsShader);
-  glDeleteProgram(lightShader);
-  glDeleteProgram(framebufferShader);
 
   glfwTerminate();
 

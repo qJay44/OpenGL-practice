@@ -34,6 +34,7 @@ typedef struct {
 [[nodiscard]] Object objectCreateTestPyramid(void);
 [[nodiscard]] Object objectCreateSkybox(const char* dirPath);
 [[nodiscard]] Object objectCreateTestLight(vec3s color);
+[[nodiscard]] Object objectCreateTestPlane(void);
 
 void objectAddTexture(Object* self, const char* name, const char* path);
 void objectTranslate(Object* self, vec3s v);

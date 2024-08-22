@@ -2,6 +2,6 @@
 
 git clone -n --depth=1 --filter=tree:0 https://github.com/VictorGordan/opengl-tutorials
 cd opengl-tutorials
-git sparse-checkout set --no-cone "Resources/YoutubeOpenGL 14 - Depth Buffer"
+git sparse-checkout set --no-cone "Resources/YoutubeOpenGL 27 - Normal Maps"
 git checkout
 cd ..
