@@ -17,7 +17,6 @@ Texture textureCreate2D(const char* path, enum TextureEnum type) {
 
   GLuint textureId;
   glGenTextures(1, &textureId);
-  glActiveTexture(GL_TEXTURE0 + unit2D);
   glBindTexture(GL_TEXTURE_2D, textureId);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

@@ -7,10 +7,10 @@
 
 #include "cglm/struct/cam.h"
 #include "cglm/struct/mat4.h"
-#include "cglm/struct/vec3.h"
 #include "cglm/types-struct.h"
 
 #include "camera.h"
+#include "cglm/util.h"
 #include "mesh/framebuffer.h"
 #include "mesh/object.h"
 #include "mesh/rbo.h"
@@ -19,8 +19,6 @@
 #include "inputs.h"
 #include "mesh/texture.h"
 #include "mesh/vao.h"
-
-#define NUM_ASTEROIDS 500
 
 struct State _gState = {
   .nearPlane = 0.1f,
@@ -85,27 +83,20 @@ int main() {
   // ========== Illumination ========== //
 
   vec4s lightColor = (vec4s){1.f, 1.f, 1.f, 1.f};
-  vec3s lightPos = (vec3s){0.5f, 1.5f, 0.5f};
+  vec3s lightPos = (vec3s){0.f, 10.f, 0.f};
   Object lightCube = objectCreateTestLight((vec3s){lightColor.x, lightColor.y, lightColor.z});
   objectTranslate(&lightCube, lightPos);
-
-  glUseProgram(mainShader);
-	glUniform4f(glGetUniformLocation(mainShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
-	glUniform3f(glGetUniformLocation(mainShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 
   // ======================== //
 
   Camera camera = cameraCreate((vec3s){-1.f, 1.f, 2.f}, (vec3s){0.5f, -0.3f, -1.f}, 100.f);
 
-  Model model = modelCreate("mesh/models/crow");
-  modelScale(&model, 0.25f);
+  Model model = modelCreate("mesh/models/ground");
+  Model model2 = modelCreate("mesh/models/trees");
+  /* modelScale(&model, 0.5f); */
+  /* modelScale(&model2, 0.5f); */
 
   vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f};
-
-  glUseProgram(mainShader);
-	glUniform3f(glGetUniformLocation(mainShader, "background"), backgroundColor.x, backgroundColor.y, backgroundColor.z);
-	glUniform1f(glGetUniformLocation(mainShader, "near"), _gState.nearPlane);
-	glUniform1f(glGetUniformLocation(mainShader, "far"), _gState.farPlane);
 
   // ========== Rectangle for the default framebuffer ========== //
 
@@ -142,18 +133,27 @@ int main() {
   framebufferBind(&framebufferMSAA);
   struct RBO rbo = rboCreate(1, GL_TEXTURE_2D_MULTISAMPLE);
   Framebuffer framebuffer = framebufferCreate();
-  Framebuffer framebufferShadowMap = framebufferCreateShadowMap(shadowMapWidth, shadowMapHeight);
+  Framebuffer framebufferPointShadowMap = framebufferCreateShadowMap(shadowMapWidth, shadowMapHeight);
+
+  mat4s orthgonalProjection = glms_ortho(-35.f, 35.f, -35.f, 35.f, _gState.nearPlane, _gState.farPlane);
+  mat4s perspectiveProjection = glms_perspective(glm_rad(90.f), 1.f, _gState.nearPlane, _gState.farPlane);
+  mat4s lightView = glms_lookat(lightPos, (vec3s){0.f, 0.f, 0.f}, (vec3s){0.f, 0.f, 1.f});
+  mat4s lightProjection = glms_mat4_mul(perspectiveProjection, lightView);
 
   glUseProgram(framebufferShader);
 	glUniform1i(glGetUniformLocation(framebufferShader, "screenTexture"), framebufferMSAA.texture.unit);
 	glUniform1i(glGetUniformLocation(framebufferShader, "gamma"), _gState.gamma);
 
-  mat4s orthgonalProjection = glms_ortho(-35.f, 35.f, -35.f, 35.f, 0.1f, 75.f);
-  mat4s lightView = glms_lookat(glms_vec3_scale(lightPos, 20.f), (vec3s){0.f, 0.f, 0.f}, (vec3s){0.f, 1.f, 0.f});
-  mat4s lightProjection = glms_mat4_mul(orthgonalProjection, lightView);
-
   glUseProgram(shadowMapShader);
   glUniformMatrix4fv(glGetUniformLocation(shadowMapShader, "lightProj"), 1, GL_FALSE, (const GLfloat*)lightProjection.raw);
+
+  glUseProgram(mainShader);
+	glUniform3f(glGetUniformLocation(mainShader, "background"), backgroundColor.x, backgroundColor.y, backgroundColor.z);
+	glUniform1f(glGetUniformLocation(mainShader, "near"), _gState.nearPlane);
+	glUniform1f(glGetUniformLocation(mainShader, "far"), _gState.farPlane);
+	glUniform4f(glGetUniformLocation(mainShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+	glUniform3f(glGetUniformLocation(mainShader, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
+  glUniformMatrix4fv(glGetUniformLocation(mainShader, "lightProj"), 1, GL_FALSE, (const GLfloat*)lightProjection.raw);
 
   double titleTimer = glfwGetTime();
   double prevTime = titleTimer;
@@ -190,9 +190,10 @@ int main() {
 
     // Draw model for the shadow map
     glViewport(0, 0, shadowMapWidth, shadowMapHeight);
-    framebufferBind(&framebufferShadowMap);
+    framebufferBind(&framebufferPointShadowMap);
     glClear(GL_DEPTH_BUFFER_BIT);
     modelDraw(&model, &camera, shadowMapShader);
+    modelDraw(&model2, &camera, shadowMapShader);
 
     // Back to the default framebuffer
     framebufferUnbind();
@@ -209,11 +210,11 @@ int main() {
     cameraUpdate(&camera, dt);
 
     glUseProgram(mainShader);
-    textureBind(&framebufferShadowMap.texture);
-    glUniform1i(glGetUniformLocation(mainShader, "shadowMap") , framebufferShadowMap.texture.unit);
-    glUniformMatrix4fv(glGetUniformLocation(mainShader, "lightProj"), 1, GL_FALSE, (const GLfloat*)lightProjection.raw);
+    textureBind(&framebufferPointShadowMap.texture);
+    glUniform1i(glGetUniformLocation(mainShader, "shadowMap") , framebufferPointShadowMap.texture.unit);
 
     modelDraw(&model, &camera, mainShader);
+    modelDraw(&model2, &camera, mainShader);
 
     glDisable(GL_CULL_FACE);
 
@@ -228,8 +229,6 @@ int main() {
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
-
-  modelDelete(&model);
 
   glDeleteProgram(mainShader);
   glDeleteProgram(normalsShader);
