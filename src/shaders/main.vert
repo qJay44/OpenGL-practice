@@ -19,7 +19,8 @@ void main() {
   data_out.vertPos = vertPos;
   data_out.normal = normal;
   data_out.color = col;
-  data_out.texCoord = mat2(1.f, 0.f, 0.f, -1.f) * tex;
+  //data_out.texCoord = mat2(1.f, 0.f, 0.f, -1.f) * tex;
+  data_out.texCoord = tex;
   gl_Position = vec4(vertPos, 1.f);
 }
 

@@ -44,9 +44,9 @@ void main() {
 
   gl_Position = cam * gl_in[0].gl_Position;
   vertPos = tbn * data_in[0].vertPos;
-  normal = data_in[0].normal;
   color = data_in[0].color;
   texCoord = data_in[0].texCoord;
+  normal = data_in[0].normal;
   fragPosLight = lightProj * gl_in[0].gl_Position;
   lightPos = tbn * lightPosUni;
   camPos = tbn * camPosUni;
@@ -54,9 +54,9 @@ void main() {
 
   gl_Position = cam * gl_in[1].gl_Position;
   vertPos = tbn * data_in[1].vertPos;
-  normal = data_in[1].normal;
   color = data_in[1].color;
   texCoord = data_in[1].texCoord;
+  normal = data_in[1].normal;
   fragPosLight = lightProj * gl_in[1].gl_Position;
   lightPos = tbn * lightPosUni;
   camPos = tbn * camPosUni;
@@ -64,9 +64,9 @@ void main() {
 
   gl_Position = cam * gl_in[2].gl_Position;
   vertPos = tbn * data_in[2].vertPos;
-  normal = data_in[2].normal;
   color = data_in[2].color;
   texCoord = data_in[2].texCoord;
+  normal = data_in[2].normal;
   fragPosLight = lightProj * gl_in[2].gl_Position;
   lightPos = tbn * lightPosUni;
   camPos = tbn * camPosUni;

@@ -83,7 +83,7 @@ int main() {
   // ========== Illumination ========== //
 
   vec4s lightColor = (vec4s){1.f, 1.f, 1.f, 1.f};
-  vec3s lightPos = (vec3s){0.f, 5.f, 0.f};
+  vec3s lightPos = (vec3s){0.5f, 0.5f, 0.5f};
   Object lightCube = objectCreateTestLight((vec3s){lightColor.x, lightColor.y, lightColor.z});
   objectTranslate(&lightCube, lightPos);
 
@@ -98,6 +98,7 @@ int main() {
   Object plane = objectCreateTestPlane();
   objectAddTexture(&plane, "diffuseDefault", "textures/diffuse.png");
   objectAddTexture(&plane, "normalDefault", "textures/normal.png");
+  objectAddTexture(&plane, "displacementDefault", "textures/displacement.png");
 
   vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f};
 

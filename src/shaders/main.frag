@@ -16,6 +16,7 @@ uniform float far;
 uniform sampler2D diffuse0;
 uniform sampler2D specular0;
 uniform sampler2D normal0;
+uniform sampler2D displacement0;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubeMap;
 uniform vec4 lightColor;
@@ -30,16 +31,50 @@ vec4 pointLight() {
 
   float ambient = 0.2f;
 
+	vec3 viewDirection = normalize(camPos - vertPos);
+
+	// Variables that control parallax occlusion mapping quality
+	float heightScale = 0.05f;
+	const float minLayers = 8.0f;
+  const float maxLayers = 64.0f;
+  float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0f, 0.0f, 1.0f), viewDirection)));
+	float layerDepth = 1.f / numLayers;
+	float currentLayerDepth = 0.f;
+
+	// Remove the z division if you want less aberated results
+	vec2 S = viewDirection.xy / viewDirection.z * heightScale;
+  vec2 deltaUVs = S / numLayers;
+
+	vec2 UVs = texCoord;
+	float currentDepthMapValue = 1.f - texture(displacement0, UVs).r;
+
+	// Loop till the point on the heightmap is "hit"
+	while(currentLayerDepth < currentDepthMapValue) {
+    UVs -= deltaUVs;
+    currentDepthMapValue = 1.f - texture(displacement0, UVs).r;
+    currentLayerDepth += layerDepth;
+  }
+
+	// Apply Occlusion (interpolation with prev value)
+	vec2 prevTexCoords = UVs + deltaUVs;
+	float afterDepth  = currentDepthMapValue - currentLayerDepth;
+	float beforeDepth = 1.0f - texture(displacement0, prevTexCoords).r - currentLayerDepth + layerDepth;
+	float weight = afterDepth / (afterDepth - beforeDepth);
+	UVs = prevTexCoords * weight + UVs * (1.0f - weight);
+
+	// Get rid of anything outside the normal range
+	if(UVs.x > 1.0 || UVs.y > 1.0 || UVs.x < 0.0 || UVs.y < 0.0)
+		discard;
+
   // diffuse lightning
-  vec3 n = normalize(texture(normal0, texCoord).xyz * 2.f - 1.f);
+  vec3 n = normalize(texture(normal0, UVs).xyz * 2.f - 1.f);
   vec3 lightDirection = normalize(lightVec);
   float diffuse = max(dot(n, lightDirection), 0.f);
 
   // specular lightning
   float specular = 0.f;
-  if (diffuse) {
+  if (diffuse != 0.f) {
     float specularLight = 0.5f;
-    vec3 viewDirection = normalize(camPos - vertPos);
     vec3 halfwayVec = normalize(viewDirection + lightDirection);
     float specAmount = pow(max(dot(n, halfwayVec), 0.f), 16);
     specular = specAmount * specularLight;
@@ -48,7 +83,7 @@ vec4 pointLight() {
   float shadow = 0.f;
   vec3 fragToLight = vertPos - lightPos;
   float currentDepth = length(fragToLight);
-  float bias = max(0.5f * (1.f - dot(normal, lightDirection)), 0.0005f);
+  float bias = max(0.5f * (1.f - dot(n, lightDirection)), 0.0005f);
 
   int sampleRadius = 2;
   float offset = 0.02f;
@@ -64,10 +99,11 @@ vec4 pointLight() {
   }
   shadow /= pow((sampleRadius * 2 + 1), 3);
 
-  vec4 diffuse0Col = texture(diffuse0, texCoord) * (diffuse * (1.f - shadow) * intensity + ambient);
-  float specular0Col = texture(specular0, texCoord).r * specular * (1.f - shadow) * intensity;
+  vec4 diffuse0Col = texture(diffuse0, UVs) * (diffuse * (1.f - shadow) * intensity + ambient);
+  float specular0Col = texture(specular0, UVs).r * specular * (1.f - shadow) * intensity;
 
   return (diffuse0Col + specular0Col) * lightColor;
+
 }
 
 vec4 directionalLight() {
