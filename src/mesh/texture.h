@@ -10,6 +10,7 @@ enum TextureEnum : u8 {
   TEXTURE_FRAMEBUFFER,
   TEXTURE_SHADOWMAP,
   TEXTURE_SHADOWCUBEMAP,
+  TEXTURE_BLOOM
 };
 
 typedef struct {
@@ -20,7 +21,8 @@ typedef struct {
   GLenum glType;
 } Texture;
 
-[[nodiscard]] Texture textureCreate2D(const char* path, enum TextureEnum type);
+[[nodiscard]] Texture textureLoad2D(const char* path, enum TextureEnum type);
+[[nodiscard]] Texture textureCreate2D(u8 slot);
 [[nodiscard]] Texture* textureCreateCubemap(const char* dirPath);
 [[nodiscard]] Texture textureCreateFramebuffer(GLenum targetType);
 [[nodiscard]] Texture textureCreateShadowMap(int w, int h);

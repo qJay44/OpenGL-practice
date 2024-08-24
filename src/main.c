@@ -1,3 +1,4 @@
+#include <gl/gl.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,18 +6,13 @@
 #include <time.h>
 #include <windows.h>
 
-#include "cglm/struct/cam.h"
-#include "cglm/struct/mat4.h"
 #include "cglm/types-struct.h"
 
 #include "camera.h"
-#include "cglm/util.h"
+#include "inputs.h"
 #include "mesh/framebuffer.h"
 #include "mesh/object.h"
-#include "mesh/rbo.h"
 #include "mesh/shader.h"
-#include "mesh/model.h"
-#include "inputs.h"
 #include "mesh/texture.h"
 #include "mesh/vao.h"
 
@@ -79,6 +75,7 @@ int main() {
   GLint shadowMapShader = shaderCreate("shaders/shadowMap.vert", "shaders/shadowMap.frag", NULL);
   GLint lightShader = shaderCreate("shaders/light.vert", "shaders/light.frag", NULL);
   GLint framebufferShader = shaderCreate("shaders/framebuffer.vert", "shaders/framebuffer.frag", NULL);
+  GLint blurShader = shaderCreate("shaders/framebuffer.vert", "shaders/blur.frag", NULL);
 
   // ========== Illumination ========== //
 
@@ -96,9 +93,9 @@ int main() {
   /* modelScale(&model, 0.5f); */
   /* modelScale(&model2, 0.5f); */
   Object plane = objectCreateTestPlane();
-  objectAddTexture(&plane, "diffuseDefault", "textures/diffuse.png");
-  objectAddTexture(&plane, "normalDefault", "textures/normal.png");
-  objectAddTexture(&plane, "displacementDefault", "textures/displacement.png");
+  objectAddTexture(&plane, "diffuseDefault", "textures/lava/diffuse.png");
+  objectAddTexture(&plane, "normalDefault", "textures/lava/normal.png");
+  objectAddTexture(&plane, "displacementDefault", "textures/lava/displacement.png");
 
   vec3s backgroundColor = (vec3s){0.07f, 0.13f, 0.17f};
 
@@ -129,38 +126,24 @@ int main() {
 
   // =========================================================== //
 
-  int shadowMapWidth = 2048;
-  int shadowMapHeight = 2048;
+  Framebuffer framebufferPP = framebufferCreate();
+  Texture bloomTexture = textureCreate2D(0);
+  framebufferBind(&framebufferPP);
+  textureBind(&bloomTexture);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, bloomTexture.id, 0);
 
-  // NOTE: Order matters
-  Framebuffer framebufferMSAA = framebufferCreateMSAA();
-  framebufferBind(&framebufferMSAA);
-  struct RBO rbo = rboCreate(1, GL_TEXTURE_2D_MULTISAMPLE);
-  Framebuffer framebuffer = framebufferCreate();
-  Framebuffer framebufferPointShadowMap = framebufferCreateShadowMap(SHADOWMAP_CUBEMAP, shadowMapWidth, shadowMapHeight);
-  framebufferUnbind();
+  u32 attachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+  glDrawBuffers(2, attachments);
 
-  mat4s orthgonalProjection = glms_ortho(-35.f, 35.f, -35.f, 35.f, _gState.nearPlane, _gState.farPlane);
-  mat4s perspectiveProjection = glms_perspective(glm_rad(90.f), 1.f, _gState.nearPlane, _gState.farPlane);
-  mat4s lightView = glms_lookat(lightPos, (vec3s){0.f, 0.f, 0.f}, (vec3s){0.f, 0.f, 1.f});
-  mat4s lightProjection = glms_mat4_mul(perspectiveProjection, lightView);
-
-  mat4s shadowProj = glms_perspective(glm_rad(90.f), 1.f, _gState.nearPlane, _gState.farPlane);
-  mat4s shadowTransforms[] = {
-    glms_mat4_mul(shadowProj, glms_lookat(lightPos, glms_vec3_add(lightPos, (vec3s){ 1.f,  0.f,  0.f}), (vec3s){0.f, -1.f,  0.f})),
-    glms_mat4_mul(shadowProj, glms_lookat(lightPos, glms_vec3_add(lightPos, (vec3s){-1.f,  0.f,  0.f}), (vec3s){0.f, -1.f,  0.f})),
-    glms_mat4_mul(shadowProj, glms_lookat(lightPos, glms_vec3_add(lightPos, (vec3s){ 0.f,  1.f,  0.f}), (vec3s){0.f,  0.f,  1.f})),
-    glms_mat4_mul(shadowProj, glms_lookat(lightPos, glms_vec3_add(lightPos, (vec3s){ 0.f, -1.f,  0.f}), (vec3s){0.f,  0.f, -1.f})),
-    glms_mat4_mul(shadowProj, glms_lookat(lightPos, glms_vec3_add(lightPos, (vec3s){ 0.f,  0.f,  1.f}), (vec3s){0.f, -1.f,  0.f})),
-    glms_mat4_mul(shadowProj, glms_lookat(lightPos, glms_vec3_add(lightPos, (vec3s){ 0.f,  0.f, -1.f}), (vec3s){0.f, -1.f,  0.f})),
+  Framebuffer pingpongFBOs[2] = {
+    framebufferCreate(),
+    framebufferCreate(),
   };
 
   glUseProgram(framebufferShader);
-	glUniform1i(glGetUniformLocation(framebufferShader, "screenTexture"), framebufferMSAA.texture.unit);
-	glUniform1i(glGetUniformLocation(framebufferShader, "gamma"), _gState.gamma);
-
-  glUseProgram(shadowMapShader);
-  glUniformMatrix4fv(glGetUniformLocation(shadowMapShader, "lightProj"), 1, GL_FALSE, (const GLfloat*)lightProjection.raw);
+	glUniform1i(glGetUniformLocation(framebufferShader, "screenTexture"), 0);
+	glUniform1i(glGetUniformLocation(framebufferShader, "bloomTexture"), 1);
+	glUniform1f(glGetUniformLocation(framebufferShader, "gamma"), _gState.gamma);
 
   glUseProgram(mainShader);
 	glUniform3f(glGetUniformLocation(mainShader, "background"), backgroundColor.x, backgroundColor.y, backgroundColor.z);
@@ -168,17 +151,9 @@ int main() {
 	glUniform1f(glGetUniformLocation(mainShader, "far"), _gState.farPlane);
 	glUniform4f(glGetUniformLocation(mainShader, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
 	glUniform3f(glGetUniformLocation(mainShader, "lightPosUni"), lightPos.x, lightPos.y, lightPos.z);
-  glUniformMatrix4fv(glGetUniformLocation(mainShader, "lightProj"), 1, GL_FALSE, (const GLfloat*)lightProjection.raw);
 
-  glUseProgram(shadowCubeMapShader);
-  glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[0]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[0].raw);
-  glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[1]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[1].raw);
-  glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[2]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[2].raw);
-  glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[3]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[3].raw);
-  glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[4]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[4].raw);
-  glUniformMatrix4fv(glGetUniformLocation(shadowCubeMapShader, "shadowMatrices[5]"), 1, GL_FALSE, (const GLfloat*)shadowTransforms[5].raw);
-	glUniform3f(glGetUniformLocation(shadowCubeMapShader, "lightPosUni"), lightPos.x, lightPos.y, lightPos.z);
-	glUniform1f(glGetUniformLocation(shadowCubeMapShader, "far"), _gState.farPlane);
+  glUseProgram(blurShader);
+	glUniform1i(glGetUniformLocation(blurShader, "screenTexture"), 0);
 
   double titleTimer = glfwGetTime();
   double prevTime = titleTimer;
@@ -213,42 +188,50 @@ int main() {
       titleTimer = currTime;
     }
 
-    // Draw model for the shadow map
-    glViewport(0, 0, shadowMapWidth, shadowMapHeight);
-    framebufferBind(&framebufferPointShadowMap);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    /* modelDraw(&model, &camera, shadowCubeMapShader); */
-    /* modelDraw(&model2, &camera, shadowCubeMapShader); */
-
-    // Back to the default framebuffer
-    framebufferUnbind();
-    glViewport(0, 0, _gState.winWidth, _gState.winHeight);
-
-    // Bind MSAA framebuffer
-    framebufferBind(&framebufferMSAA);
-    glClearColor(powf(backgroundColor.x, _gState.gamma), powf(backgroundColor.y, _gState.gamma), powf(backgroundColor.z, _gState.gamma), 1.f);
+    framebufferBind(&framebufferPP);
+    //glClearColor(powf(backgroundColor.x, _gState.gamma), powf(backgroundColor.y, _gState.gamma), powf(backgroundColor.z, _gState.gamma), 1.f);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
 
     processInput(window, &camera);
 
     cameraMove(&camera, mouseX, mouseY);
     cameraUpdate(&camera, dt);
 
-    glUseProgram(mainShader);
-    textureBind(&framebufferPointShadowMap.texture);
-    glUniform1i(glGetUniformLocation(mainShader, "shadowCubeMap") , framebufferPointShadowMap.texture.unit);
-
-    /* modelDraw(&model, &camera, mainShader); */
-    /* modelDraw(&model2, &camera, mainShader); */
-
     glDisable(GL_CULL_FACE);
 
     objectDraw(&plane, &camera, mainShader);
     objectDraw(&lightCube, &camera, lightShader);
 
-    framebufferBindReadDraw(&framebufferMSAA, &framebuffer);
+    bool horizontal = true;
+    int amount = 1;
+    glUseProgram(blurShader);
+    for (int i = 0; i < amount; i++) {
+      framebufferBind(&pingpongFBOs[horizontal]);
+      glUniform1i(glGetUniformLocation(blurShader, "horizontal"), horizontal);
+      vaoBind(&vaoRect);
+      glDisable(GL_DEPTH_TEST);
+      horizontal ^= true;
+
+      if (i == 0)
+        textureBind(&bloomTexture);
+      else
+        textureBind(&pingpongFBOs[horizontal].texture);
+
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+
+    // Back to the default framebuffer
     framebufferUnbind();
-    framebufferDraw(&framebuffer, framebufferShader, &vaoRect, sizeof(rectangleVertices) / sizeof(rectangleVertices[0]));
+    glUseProgram(framebufferShader);
+    vaoBind(&vaoRect);
+    glDisable(GL_DEPTH_TEST);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, framebufferPP.texture.id);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, pingpongFBOs[0].texture.id);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     glEnable(GL_CULL_FACE);
 

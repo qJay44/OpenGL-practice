@@ -1,9 +1,10 @@
 #version 330 core
 
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BloomColor;
 
 in vec3 vertPos;
-in vec3 color;
+//in vec3 color;
 in vec2 texCoord;
 in vec3 normal;
 in vec4 fragPosLight;
@@ -17,24 +18,24 @@ uniform sampler2D diffuse0;
 uniform sampler2D specular0;
 uniform sampler2D normal0;
 uniform sampler2D displacement0;
-uniform sampler2D shadowMap;
-uniform samplerCube shadowCubeMap;
+//uniform sampler2D shadowMap;
+//uniform samplerCube shadowCubeMap;
 uniform vec4 lightColor;
 
 vec4 pointLight() {
   // intensity
   vec3 lightVec = lightPos - vertPos;
   float dist = length(lightVec);
-  float a = 0.0003f;
-  float b = 0.00002f;
+  float a = 1.f;
+  float b = 0.7f;
   float intensity = 1.f / (a * dist * dist + b * dist + 1.f);
 
-  float ambient = 0.2f;
+  float ambient = 0.05f;
 
 	vec3 viewDirection = normalize(camPos - vertPos);
 
 	// Variables that control parallax occlusion mapping quality
-	float heightScale = 0.05f;
+	float heightScale = 0.15f;
 	const float minLayers = 8.0f;
   const float maxLayers = 64.0f;
   float numLayers = mix(maxLayers, minLayers, abs(dot(vec3(0.0f, 0.0f, 1.0f), viewDirection)));
@@ -81,29 +82,28 @@ vec4 pointLight() {
   }
 
   float shadow = 0.f;
-  vec3 fragToLight = vertPos - lightPos;
-  float currentDepth = length(fragToLight);
-  float bias = max(0.5f * (1.f - dot(n, lightDirection)), 0.0005f);
+  //vec3 fragToLight = vertPos - lightPos;
+  //float currentDepth = length(fragToLight);
+  //float bias = max(0.5f * (1.f - dot(n, lightDirection)), 0.0005f);
 
-  int sampleRadius = 2;
-  float offset = 0.02f;
-  for (int z = -sampleRadius; z <= sampleRadius; z++) {
-    for (int y = -sampleRadius; y <= sampleRadius; y++) {
-      for (int x = -sampleRadius; x <= sampleRadius; x++) {
-        float closestDepth = texture(shadowCubeMap, fragToLight + vec3(x, y, z) * offset).r;
-        closestDepth *= far;
-        if (currentDepth > closestDepth + bias)
-          shadow += 1.f;
-      }
-    }
-  }
-  shadow /= pow((sampleRadius * 2 + 1), 3);
+  //int sampleRadius = 2;
+  //float offset = 0.02f;
+  //for (int z = -sampleRadius; z <= sampleRadius; z++) {
+  //  for (int y = -sampleRadius; y <= sampleRadius; y++) {
+  //    for (int x = -sampleRadius; x <= sampleRadius; x++) {
+  //      float closestDepth = texture(shadowCubeMap, fragToLight + vec3(x, y, z) * offset).r;
+  //      closestDepth *= far;
+  //      if (currentDepth > closestDepth + bias)
+  //        shadow += 1.f;
+  //    }
+  //  }
+  //}
+  //shadow /= pow((sampleRadius * 2 + 1), 3);
 
   vec4 diffuse0Col = texture(diffuse0, UVs) * (diffuse * (1.f - shadow) * intensity + ambient);
   float specular0Col = texture(specular0, UVs).r * specular * (1.f - shadow) * intensity;
 
   return (diffuse0Col + specular0Col) * lightColor;
-
 }
 
 vec4 directionalLight() {
@@ -119,23 +119,23 @@ vec4 directionalLight() {
   float specular = specAmount * specularLight;
 
   float shadow = 0.f;
-  vec3 lightCoords = fragPosLight.xyz / fragPosLight.w;
-  if (lightCoords.z <= 1.f) {
-    lightCoords = (lightCoords + 1.f) * 0.5f;
-    float currentDepth = lightCoords.z;
-    float bias = max(0.025f * (1.f - dot(normal, lightDirection)), 0.0005f);
+  //vec3 lightCoords = fragPosLight.xyz / fragPosLight.w;
+  //if (lightCoords.z <= 1.f) {
+  //  lightCoords = (lightCoords + 1.f) * 0.5f;
+  //  float currentDepth = lightCoords.z;
+  //  float bias = max(0.025f * (1.f - dot(normal, lightDirection)), 0.0005f);
 
-		int sampleRadius = 2;
-		vec2 pixelSize = 1.f / textureSize(shadowMap, 0);
-		for(int y = -sampleRadius; y <= sampleRadius; y++) {
-      for(int x = -sampleRadius; x <= sampleRadius; x++) {
-        float closestDepth = texture(shadowMap, lightCoords.xy + vec2(x, y) * pixelSize).r;
-        if (currentDepth > closestDepth + bias)
-          shadow += 1.f;
-      }
-		}
-		shadow /= pow((sampleRadius * 2 + 1), 2);
-  }
+	//	int sampleRadius = 2;
+	//	vec2 pixelSize = 1.f / textureSize(shadowMap, 0);
+	//	for(int y = -sampleRadius; y <= sampleRadius; y++) {
+  //    for(int x = -sampleRadius; x <= sampleRadius; x++) {
+  //      float closestDepth = texture(shadowMap, lightCoords.xy + vec2(x, y) * pixelSize).r;
+  //      if (currentDepth > closestDepth + bias)
+  //        shadow += 1.f;
+  //    }
+	//	}
+	//	shadow /= pow((sampleRadius * 2 + 1), 2);
+  //}
 
   vec4 diffuse0Col = texture(diffuse0, texCoord) * (diffuse * (1.f - shadow) + ambient);
   float specular0Col = texture(specular0, texCoord).r * specular * (1.f - shadow);
@@ -165,23 +165,23 @@ vec4 spotLight() {
   float intensity = clamp((angle - outerCone) / (innerCone - outerCone), 0.f, 1.f);
 
   float shadow = 0.f;
-  vec3 lightCoords = fragPosLight.xyz / fragPosLight.w;
-  if (lightCoords.z <= 1.f) {
-    lightCoords = (lightCoords + 1.f) * 0.5f;
-    float currentDepth = lightCoords.z;
-    float bias = max(0.00025f * (1.f - dot(normal, lightDirection)), 0.000005f);
+  //vec3 lightCoords = fragPosLight.xyz / fragPosLight.w;
+  //if (lightCoords.z <= 1.f) {
+  //  lightCoords = (lightCoords + 1.f) * 0.5f;
+  //  float currentDepth = lightCoords.z;
+  //  float bias = max(0.00025f * (1.f - dot(normal, lightDirection)), 0.000005f);
 
-		int sampleRadius = 2;
-		vec2 pixelSize = 1.f / textureSize(shadowMap, 0);
-		for(int y = -sampleRadius; y <= sampleRadius; y++) {
-      for(int x = -sampleRadius; x <= sampleRadius; x++) {
-        float closestDepth = texture(shadowMap, lightCoords.xy + vec2(x, y) * pixelSize).r;
-        if (currentDepth > closestDepth + bias)
-          shadow += 1.f;
-      }
-		}
-		shadow /= pow((sampleRadius * 2 + 1), 2);
-  }
+	//	int sampleRadius = 2;
+	//	vec2 pixelSize = 1.f / textureSize(shadowMap, 0);
+	//	for(int y = -sampleRadius; y <= sampleRadius; y++) {
+  //    for(int x = -sampleRadius; x <= sampleRadius; x++) {
+  //      float closestDepth = texture(shadowMap, lightCoords.xy + vec2(x, y) * pixelSize).r;
+  //      if (currentDepth > closestDepth + bias)
+  //        shadow += 1.f;
+  //    }
+	//	}
+	//	shadow /= pow((sampleRadius * 2 + 1), 2);
+  //}
 
   vec4 diffuse0Col = texture(diffuse0, texCoord) * (diffuse * (1.f - shadow) * intensity + ambient);
   float specular0Col = texture(specular0, texCoord).r * specular * (1.f - shadow) * intensity;
@@ -203,5 +203,11 @@ float logisticDepth(float depth) {
 
 void main() {
   FragColor = pointLight();
+
+  if (FragColor.r > 0.05f)
+    FragColor.r *= 5.f;
+
+  float brightness = dot(FragColor.rgb, vec3(0.2126f, 0.7152f, 0.0722f));
+  BloomColor = brightness > 0.15f ? vec4(FragColor.rgb, 1.f) : vec4(0.f, 0.f, 0.f, 1.f);
 }
 

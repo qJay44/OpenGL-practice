@@ -191,14 +191,14 @@ Object objectCreateTestPyramid(void) {
 Object objectCreateTestLight(vec3s color) {
   // Positions (3), colors (3), texture coords (2), normals (3)
   GLfloat vertices[88] = {
-	  -0.1f, -0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
-	  -0.1f, -0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
-	   0.1f, -0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
-	   0.1f, -0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
-	  -0.1f,  0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
-	  -0.1f,  0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
-	   0.1f,  0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
-	   0.1f,  0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  0.f, 0.f, 0.f,
+	  -0.1f, -0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  1.f, 1.f, 0.f,
+	  -0.1f, -0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  1.f, 1.f, 0.f,
+	   0.1f, -0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  1.f, 1.f, 0.f,
+	   0.1f, -0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  1.f, 1.f, 0.f,
+	  -0.1f,  0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  1.f, 1.f, 0.f,
+	  -0.1f,  0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  1.f, 1.f, 0.f,
+	   0.1f,  0.1f, -0.1f,  color.x, color.y, color.z,  0.f, 0.f,  1.f, 1.f, 0.f,
+	   0.1f,  0.1f,  0.1f,  color.x, color.y, color.z,  0.f, 0.f,  1.f, 1.f, 0.f,
   };
 
   GLuint indices[36] = {
@@ -265,7 +265,7 @@ void objectAddTexture(Object* self, const char* name, const char* path) {
     }
 
     assert(cachedTexturesIdx < CACHED_TEXTURES_LENGTH);
-    cachedTextures[cachedTexturesIdx++] = textureCreate2D(path, texType);
+    cachedTextures[cachedTexturesIdx++] = textureLoad2D(path, texType);
 
     if (self->texturesIdx < OBJECT_MAX_TEXTURES)
       self->textures[self->texturesIdx++] = &cachedTextures[cachedTexturesIdx - 1];

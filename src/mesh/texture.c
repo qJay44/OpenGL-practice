@@ -8,7 +8,7 @@
 
 static u8 unit2D = 0;
 
-Texture textureCreate2D(const char* path, enum TextureEnum type) {
+Texture textureLoad2D(const char* path, enum TextureEnum type) {
   assert(unit2D < GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS);
 
   int imgWidth, imgHeight, imgColorChannels;
@@ -30,7 +30,7 @@ Texture textureCreate2D(const char* path, enum TextureEnum type) {
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBytes);
       break;
     case TEXTURE_DISPLACEMENT:
-      glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, imgWidth, imgHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBytes);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, imgWidth, imgHeight, 0, GL_RED, GL_UNSIGNED_BYTE, imgBytes);
       break;
     default:
       switch (imgColorChannels) {
@@ -62,6 +62,27 @@ Texture textureCreate2D(const char* path, enum TextureEnum type) {
   sprintf(tex.name, "%s", getFileNameFromPath(path));
 
   stbi_image_free(imgBytes);
+  textureUnbind(GL_TEXTURE_2D);
+
+  return tex;
+}
+
+Texture textureCreate2D(u8 slot) {
+	u32 texId;
+	glGenTextures(1, &texId);
+	glBindTexture(GL_TEXTURE_2D, texId);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, _gState.winWidth, _gState.winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  Texture tex;
+  tex.id = texId;
+  tex.unit = slot;
+  tex.glType = GL_TEXTURE_2D,
+  tex.type = TEXTURE_BLOOM;
+  sprintf(tex.name, "%s", "BLOOM");
   textureUnbind(GL_TEXTURE_2D);
 
   return tex;
@@ -153,7 +174,7 @@ Texture textureCreateFramebuffer(GLenum targetType) {
       glTexImage2DMultisample(targetType, _gState.aaSamples, GL_RGB16F, _gState.winWidth, _gState.winHeight, GL_TRUE);
       break;
     case GL_TEXTURE_2D:
-      glTexImage2D(targetType, 0, GL_RGB16F, _gState.winWidth, _gState.winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+      glTexImage2D(targetType, 0, GL_RGBA16F, _gState.winWidth, _gState.winHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
       break;
     default:
       printf("(textureCreateFramebuffer): Unhandled targetType\n");

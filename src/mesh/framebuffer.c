@@ -12,7 +12,7 @@ static void status() {
     printf("Framebuffer error: %d\n", fboStatus);
 }
 
-Framebuffer framebufferCreate(void) {
+Framebuffer framebufferCreate() {
   Framebuffer fb;
 
   fb.fbo = fboCreate(1);
@@ -86,7 +86,7 @@ void framebufferUnbind(void) {
   fboUnbind();
 }
 
-void framebufferDraw(const Framebuffer* self, GLint shader, const struct VAO* vao, u32 vertCount) {
+void framebufferDraw(GLint shader, const struct VAO* vao, u32 vertCount) {
   glUseProgram(shader);
   glUniform1i(glGetUniformLocation(shader, "winWidth"), _gState.winWidth);
   glUniform1i(glGetUniformLocation(shader, "winHeight"), _gState.winHeight);
@@ -94,8 +94,7 @@ void framebufferDraw(const Framebuffer* self, GLint shader, const struct VAO* va
   glUniform1f(glGetUniformLocation(shader, "gamma"), _gState.gamma);
   vaoBind(vao);
   glDisable(GL_DEPTH_TEST);
-  textureBind(&self->texture);
-  glDrawArrays(GL_TRIANGLES, 0, 6);
+  glDrawArrays(GL_TRIANGLES, 0, vertCount);
   glEnable(GL_DEPTH_TEST);
 }
 

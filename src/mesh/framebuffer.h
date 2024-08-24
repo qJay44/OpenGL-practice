@@ -21,7 +21,7 @@ typedef struct {
 void framebufferBind(const Framebuffer* self);
 void framebufferBindReadDraw(const Framebuffer* read, const Framebuffer* draw);
 void framebufferUnbind(void);
-void framebufferDraw(const Framebuffer* self, GLint shader, const struct VAO* vao, u32 vertCount);
+void framebufferDraw(GLint shader, const struct VAO* vao, u32 vertCount);
 
 #endif
 
